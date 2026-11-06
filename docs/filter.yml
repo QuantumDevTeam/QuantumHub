@@ -1,0 +1,16 @@
+# Сгенерированный protobuf содержит служебные члены, которые только мешают читать.
+apiRules:
+- exclude:
+    uidRegex: ^QuantumHub\.Contracts\.Proto\..*\.(Parser|Descriptor|WriteTo|MergeFrom|CalculateSize|Clone|Equals|GetHashCode|ToString|.*FieldNumber|Types)(\(.*\))?$
+    type: Member
+- exclude:
+    uidRegex: ^QuantumHub\.Contracts\.Proto\..*Reflection$
+    type: Type
+- exclude:
+    uidRegex: ^Quantum\.Hub\.Contracts\.Proto\.Music
+# Код, который генерирует компилятор XAML.
+- exclude:
+    uidRegex: ^QuantumHub\.Gui\.(Program|QuantumHub_Gui_XamlTypeInfo).*
+- exclude:
+    uidRegex: ^QuantumHub\.Gui\.(App|MainWindow)\.(InitializeComponent|Connect|GetBindingConnector|UnloadObject|_contentLoaded|.*Bindings).*$
+    type: Member

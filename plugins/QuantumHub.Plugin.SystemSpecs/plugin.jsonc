@@ -1,0 +1,14 @@
+// Mono-DLL plugin: this file is an embedded resource of the assembly.
+{
+  "id": "qh.system",
+  "name": "System Specs",
+  "version": "1.2.0",
+  "description": "Характеристики компьютера и его текущая загрузка: процессор, память, видеокарта.",
+  "author": "QuantumDevTeam",
+  // Ничего не грузится, пока кто-нибудь не спросит.
+  "activation": "onDemand",
+  "provides": [
+    { "name": "system.specs", "version": "1.2.0" },
+    { "name": "system.stats", "version": "1.0.0" }
+  ]
+}

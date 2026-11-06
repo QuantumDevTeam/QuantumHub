@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Данные о треках дают только API WinRT. Хаб их не требует, сборки проекции лежат в папке плагина. -->
+    <TargetFramework>$(QhWinUi)</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="plugin.jsonc" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

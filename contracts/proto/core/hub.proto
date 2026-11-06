@@ -1,0 +1,222 @@
+syntax = "proto3";
+
+package quantum.hub.v1;
+option csharp_namespace = "QuantumHub.Contracts.Proto";
+
+import "core/plugin.proto";
+
+// ---- рукопожатие -------------------------------------------------------------
+
+// Первое сообщение клиента.
+message HelloRequest {
+  // Версия протокола, сейчас 1.
+  uint32 protocol_version = 1;
+  // Постоянный id клиента, например "acme.linecounter.rider".
+  string client_id = 2;
+  // Имя для показа.
+  string display_name = 3;
+  // Версия клиента.
+  string version = 4;
+  // "plugin" или "gui".
+  string role = 5;
+  // Транспорты, которые клиент умеет: "shm", "stream".
+  repeated string transports = 6;
+  // Что нужно клиенту.
+  repeated Dependency dependencies = 7;
+  // Что клиент предоставляет другим.
+  repeated Capability provides = 8;
+  // Id процесса клиента, для показа.
+  uint32 process_id = 9;
+  // Нужен только для TCP. Смотри endpoint.json.
+  string auth_token = 10;
+}
+
+// Ответ хаба на hello.
+message HelloResponse {
+  // Версия протокола хаба.
+  uint32 protocol_version = 1;
+  // Id сессии.
+  string session_id = 2;
+  // Версия хаба.
+  string hub_version = 3;
+  // Выбранный транспорт: "shm" или "stream".
+  string transport = 4;
+  // Как подключиться к памяти, если выбран "shm".
+  ShmInfo shm = 5;
+  // Результат разрешения зависимостей.
+  repeated DependencyResolution dependencies = 6;
+}
+
+// Адрес разделяемой памяти.
+message ShmInfo {
+  // Имя секции, от него образуются имена событий. Раскладка: docs/PROTOCOL.md.
+  string name = 1;
+  // Размер одного кольца.
+  uint32 ring_size = 2;
+}
+
+// ---- методы hub.* ------------------------------------------------------------
+
+// Запрос hub.resolve.
+message ResolveRequest {
+  // Что разрешить.
+  repeated Dependency dependencies = 1;
+}
+
+// Ответ hub.resolve.
+message ResolveResponse {
+  // Результаты в том же порядке.
+  repeated DependencyResolution results = 1;
+}
+
+// Запрос hub.subscribe и hub.unsubscribe.
+message SubscribeRequest {
+  // Точный топик или префикс, оканчивающийся на ".*".
+  repeated string topics = 1;
+}
+
+// Список плагинов.
+message PluginList {
+  // Плагины.
+  repeated PluginInfo plugins = 1;
+}
+
+// Ссылка на плагин по id.
+message PluginRef {
+  // Id плагина.
+  string id = 1;
+}
+
+// Запрос hub.plugins.enable.
+message SetEnabledRequest {
+  // Id плагина.
+  string id = 1;
+  // Новое значение.
+  bool enabled = 2;
+}
+
+// Запрос hub.plugins.install.
+message InstallRequest {
+  // Архив .qhp или .zip, моно-DLL либо папка плагина.
+  string path = 1;
+}
+
+// Запрос файла плагина.
+message AssetRequest {
+  // Id плагина.
+  string plugin_id = 1;
+  // Какой файл. По умолчанию иконка из манифеста.
+  string name = 2;
+}
+
+// Файл плагина.
+message AssetResponse {
+  // Содержимое.
+  bytes data = 1;
+  // Имя файла.
+  string file_name = 2;
+}
+
+// Запрос hub.config.get.
+message ConfigGetRequest {
+  // Чей конфиг. По умолчанию вызывающего.
+  string plugin_id = 1;
+  // Ключ. Пусто значит весь документ.
+  string key = 2;
+}
+
+// Запрос hub.config.set.
+message ConfigSetRequest {
+  // Чей конфиг. По умолчанию вызывающего.
+  string plugin_id = 1;
+  // Ключ.
+  string key = 2;
+  // Значение в виде JSON.
+  string json = 3;
+}
+
+// Значение настройки.
+message ConfigValue {
+  // Значение в виде JSON.
+  string json = 1;
+  // Есть ли значение.
+  bool found = 2;
+}
+
+// Публикуется на топик "config.<id плагина>".
+message ConfigChanged {
+  // Чей конфиг.
+  string plugin_id = 1;
+  // Какой ключ.
+  string key = 2;
+  // Новое значение в виде JSON.
+  string json = 3;
+}
+
+// Сведения о подключении.
+message SessionInfo {
+  // Id сессии.
+  string session_id = 1;
+  // Id клиента.
+  string client_id = 2;
+  // Имя для показа.
+  string display_name = 3;
+  // Версия клиента.
+  string version = 4;
+  // Роль.
+  string role = 5;
+  // Транспорт.
+  string transport = 6;
+  // Id процесса.
+  uint32 process_id = 7;
+  // Когда подключился.
+  int64 connected_unix_ms = 8;
+  // Сколько сообщений получено от клиента.
+  uint64 messages_in = 9;
+  // Сколько сообщений отправлено клиенту.
+  uint64 messages_out = 10;
+  // Зависимости клиента.
+  repeated DependencyResolution dependencies = 11;
+}
+
+// Список подключений.
+message SessionList {
+  // Подключения.
+  repeated SessionInfo sessions = 1;
+}
+
+// Сводка о хабе.
+message HubStatus {
+  // Версия.
+  string version = 1;
+  // Id процесса.
+  uint32 process_id = 2;
+  // Когда запущен.
+  int64 started_unix_ms = 3;
+  // Папка программы.
+  string root_dir = 4;
+  // Папка данных.
+  string data_dir = 5;
+  // Папки плагинов.
+  repeated string plugin_dirs = 6;
+  // Включённые транспорты.
+  repeated string transports = 7;
+}
+
+// Запись журнала.
+message LogEntry {
+  // Время.
+  int64 unix_ms = 1;
+  // "debug", "info", "warning" или "error".
+  string level = 2;
+  // Кто написал.
+  string source = 3;
+  // Текст.
+  string message = 4;
+}
+
+// Записи журнала.
+message LogList {
+  // Записи, старые первыми.
+  repeated LogEntry entries = 1;
+}

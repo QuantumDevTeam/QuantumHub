@@ -1,0 +1,72 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "..",
+          "files": [
+            "src/QuantumHub.Contracts/QuantumHub.Contracts.csproj",
+            "src/QuantumHub.ProtoMemProtocol/QuantumHub.ProtoMemProtocol.csproj",
+            "src/QuantumHub.Client/QuantumHub.Client.csproj",
+            "src/QuantumHub.Core/QuantumHub.Core.csproj",
+            "src/QuantumHub.Service/QuantumHub.Service.csproj",
+            "src/QuantumHub.Ui.Contracts/QuantumHub.Ui.Contracts.csproj",
+            "src/QuantumHub.Gui/QuantumHub.Gui.csproj",
+            "plugins/QuantumHub.Plugin.UuidBackend/QuantumHub.Plugin.UuidBackend.csproj",
+            "plugins/QuantumHub.Plugin.SystemSpecs/QuantumHub.Plugin.SystemSpecs.csproj",
+            "plugins/QuantumHub.Plugin.Activity/QuantumHub.Plugin.Activity.csproj",
+            "plugins/QuantumHub.Plugin.Activity.Ui/QuantumHub.Plugin.Activity.Ui.csproj",
+            "plugins/QuantumHub.Plugin.AudioDevices/QuantumHub.Plugin.AudioDevices.csproj",
+            "plugins/QuantumHub.Plugin.VrSwitcher/QuantumHub.Plugin.VrSwitcher.csproj",
+            "plugins/QuantumHub.Plugin.PicoAntiSleep/QuantumHub.Plugin.PicoAntiSleep.csproj",
+            "plugins/QuantumHub.Plugin.Notifications/QuantumHub.Plugin.Notifications.csproj",
+            "plugins/QuantumHub.Plugin.Music/QuantumHub.Plugin.Music.csproj",
+            "plugins/QuantumHub.Plugin.Discord/QuantumHub.Plugin.Discord.csproj",
+            "plugins/QuantumHub.Plugin.VrChatOsc/QuantumHub.Plugin.VrChatOsc.csproj",
+            "plugins/QuantumHub.Plugin.Chatbox/QuantumHub.Plugin.Chatbox.csproj",
+            "companions/QuantumHub.Notifier/QuantumHub.Notifier.csproj",
+            "companions/QuantumHub.VrChatPanel/QuantumHub.VrChatPanel.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "includePrivateMembers": true,
+      "allowCompilationErrors": true,
+      "disableGitFeatures": true,
+      "filter": "filter.yml",
+      "namespaceLayout": "flattened",
+      "memberLayout": "samePage",
+      "enumSortOrder": "declaringOrder"
+    }
+  ],
+  "build": {
+    "content": [
+      { "files": [ "*.md", "toc.yml", "api/**.yml", "api/toc.yml" ], "exclude": [ "GitPolicy.md", "Versioning.md" ] },
+      {
+        "src": "..",
+        "files": [
+          "src/*/README.md",
+          "plugins/*/README.md",
+          "samples/*/README.md",
+          "companions/*/README.md",
+          "tests/*/README.md",
+          "contracts/README.md",
+          "scripts/README.md"
+        ]
+      }
+    ],
+    "resource": [ { "files": [ "images/**" ] } ],
+    "overwrite": [ { "files": [ "apidoc/**.md" ] } ],
+    "output": "../artifacts/docs",
+    "template": [ "default", "modern" ],
+    "globalMetadata": {
+      "_appName": "QuantumHub",
+      "_appTitle": "QuantumHub",
+      "_appFooter": "Copyright (c) 2026 QuantumDevTeam. PolyForm Noncommercial 1.0.0.",
+      "_enableSearch": true,
+      "_lang": "ru"
+    },
+    "disableGitFeatures": true
+  }
+}

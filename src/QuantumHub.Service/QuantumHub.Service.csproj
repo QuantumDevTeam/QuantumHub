@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(QhWindows)</TargetFramework>
+    <!-- Plugins load with whatever runtime the host has, so keep the host on the latest patch. -->
+    <RollForward>LatestPatch</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../QuantumHub.Core/QuantumHub.Core.csproj" />
+  </ItemGroup>
+</Project>

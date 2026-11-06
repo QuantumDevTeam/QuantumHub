@@ -1,0 +1,27 @@
+// Multi-file plugin: a folder with this manifest next to its DLL.
+{
+  "id": "qh.sample.uuid",
+  "name": "UUID Backend",
+  "version": "1.0.0",
+  "description": "Серверная часть теста IPC: принимает UUID и текст от внешней программы, хранит их и показывает здесь.",
+  "author": "QuantumDevTeam",
+  "service": { "assembly": "QuantumHub.Plugin.UuidBackend.dll" },
+  "settings": [
+    {
+      "key": "historySize",
+      "type": "number",
+      "title": "Размер истории",
+      "description": "Сколько последних значений хранить.",
+      "default": 5,
+      "min": 1,
+      "max": 20
+    },
+    {
+      "key": "uppercase",
+      "type": "bool",
+      "title": "Верхний регистр",
+      "description": "Показывать значения заглавными буквами.",
+      "default": false
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <!-- A mono-DLL: the manifest travels inside the assembly and no other file is needed. -->
+    <EmbeddedResource Include="plugin.jsonc" LogicalName="plugin.jsonc" />
+  </ItemGroup>
+</Project>

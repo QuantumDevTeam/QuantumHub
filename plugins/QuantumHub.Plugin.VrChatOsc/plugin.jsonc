@@ -1,0 +1,44 @@
+// Связь с VRChat по OSC. Сам ничего не показывает: это транспорт для других плагинов.
+{
+  "id": "qh.vrchat.osc",
+  "name": "VRChat OSC",
+  "version": "1.0.0",
+  "description": "Связь с VRChat по OSC: чат, параметры аватара, трекеры и приём сообщений из игры. Им пользуются другие плагины.",
+  "author": "QuantumDevTeam",
+  "service": { "assembly": "QuantumHub.Plugin.VrChatOsc.dll" },
+  "provides": [ { "name": "vrchat.osc", "version": "1.0.0" } ],
+  "settings": [
+    {
+      "key": "host",
+      "type": "string",
+      "group": "Отправка",
+      "title": "Адрес VRChat",
+      "description": "Если игра на другом компьютере, укажи его адрес.",
+      "default": "127.0.0.1"
+    },
+    {
+      "key": "sendPort",
+      "type": "number",
+      "group": "Отправка",
+      "title": "Порт отправки",
+      "description": "В VRChat по умолчанию 9000.",
+      "default": 9000
+    },
+    {
+      "key": "receive",
+      "type": "bool",
+      "group": "Приём",
+      "title": "Принимать сообщения из игры",
+      "description": "Параметры аватара и смена аватара. Порт может слушать только одна программа.",
+      "default": true
+    },
+    {
+      "key": "receivePort",
+      "type": "number",
+      "group": "Приём",
+      "title": "Порт приёма",
+      "description": "В VRChat по умолчанию 9001.",
+      "default": 9001
+    }
+  ]
+}

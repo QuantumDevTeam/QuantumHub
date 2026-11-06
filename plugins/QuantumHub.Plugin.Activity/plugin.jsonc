@@ -1,0 +1,37 @@
+// Смотрит за активностью пользователя и отдаёт её другим плагинам. Одна DLL работает в хабе, другая — в GUI.
+{
+  "id": "qh.activity",
+  "name": "User Activity",
+  "version": "1.0.0",
+  "description": "Знает, какое окно в фокусе, какие программы запущены и занят ли пользователь. Даёт это другим плагинам.",
+  "author": "QuantumDevTeam",
+  // Миниатюра лежит внутри DLL.
+  "icon": "embedded:icon.png",
+  "service": { "assembly": "QuantumHub.Plugin.Activity.dll" },
+  "ui": { "assembly": "QuantumHub.Plugin.Activity.Ui.dll" },
+  "provides": [ { "name": "user.activity", "version": "1.0.0" } ],
+  "settings": [
+    {
+      "key": "includeTitle",
+      "type": "bool",
+      "title": "Заголовок окна",
+      "description": "Передавать заголовок вместе с именем процесса. В заголовках бывает личное.",
+      "default": true
+    },
+    {
+      "key": "idleSeconds",
+      "type": "number",
+      "title": "Считать отошедшим через, секунд",
+      "default": 120,
+      "min": 30,
+      "max": 1800
+    },
+    {
+      "key": "vrProcesses",
+      "type": "list",
+      "title": "Процессы VR",
+      "description": "Если запущен любой из них, значит VR активен. По одному на строку.",
+      "default": [ "vrserver", "vrmonitor" ]
+    }
+  ]
+}

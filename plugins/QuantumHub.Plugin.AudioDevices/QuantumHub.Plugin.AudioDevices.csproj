@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="NAudio.Wasapi" />
+    <None Update="plugin.jsonc" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

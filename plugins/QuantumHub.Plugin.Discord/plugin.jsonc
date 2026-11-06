@@ -1,0 +1,52 @@
+// Клиент Discord без окон: подключается к запущенному приложению по локальному пайпу и отдаёт его другим плагинам.
+{
+  "id": "qh.discord",
+  "name": "Discord",
+  "version": "1.0.0",
+  "description": "Подключается к запущенному Discord: мьют, текущий канал, участники, пинг, Rich Presence. Им пользуются другие плагины.",
+  "author": "QuantumDevTeam",
+  "service": { "assembly": "QuantumHub.Plugin.Discord.dll" },
+  "provides": [ { "name": "discord.client", "version": "1.0.0" } ],
+  "settings": [
+    {
+      "key": "clientId",
+      "type": "string",
+      "group": "Приложение Discord",
+      "title": "Client ID",
+      "description": "Из своего приложения на discord.com/developers. Пока пусто, плагин к Discord не подключается.",
+      "default": ""
+    },
+    {
+      "key": "clientSecret",
+      "type": "secret",
+      "group": "Приложение Discord",
+      "title": "Client Secret",
+      "description": "Нужен только для голоса и канала. Rich Presence работает и без него.",
+      "default": ""
+    },
+    {
+      "key": "redirectUri",
+      "type": "string",
+      "group": "Приложение Discord",
+      "title": "Redirect URI",
+      "description": "Такой же адрес должен быть указан в настройках OAuth2 приложения.",
+      "default": "http://127.0.0.1"
+    },
+    {
+      "key": "scopes",
+      "type": "list",
+      "group": "Приложение Discord",
+      "title": "Разрешения",
+      "description": "По одному на строку. Изменения вступят в силу при следующей авторизации.",
+      "default": [ "rpc", "rpc.voice.read", "rpc.voice.write", "identify" ]
+    },
+    {
+      "key": "autoConnect",
+      "type": "bool",
+      "group": "Подключение",
+      "title": "Подключаться автоматически",
+      "description": "Пока Discord не запущен, плагин просто ждёт его.",
+      "default": true
+    }
+  ]
+}

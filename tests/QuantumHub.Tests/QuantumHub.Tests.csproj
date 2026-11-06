@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Как у плагина Music: ему нужны API WinRT. -->
+    <TargetFramework>$(QhWinUi)</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <IsPackable>false</IsPackable>
+    <!-- Имена тестов и есть их описание. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/QuantumHub.Core/QuantumHub.Core.csproj" />
+    <ProjectReference Include="../../src/QuantumHub.Client/QuantumHub.Client.csproj" />
+    <!-- Build order only: the tests install these plugins from their output folders. -->
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.UuidBackend/QuantumHub.Plugin.UuidBackend.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.AudioDevices/QuantumHub.Plugin.AudioDevices.csproj" ReferenceOutputAssembly="false" />
+    <!-- Эти проверяются напрямую: у них есть логика, отделённая от железа. -->
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.VrSwitcher/QuantumHub.Plugin.VrSwitcher.csproj" />
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.Activity/QuantumHub.Plugin.Activity.csproj" />
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.SystemSpecs/QuantumHub.Plugin.SystemSpecs.csproj" />
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.Music/QuantumHub.Plugin.Music.csproj" />
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.Discord/QuantumHub.Plugin.Discord.csproj" />
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.VrChatOsc/QuantumHub.Plugin.VrChatOsc.csproj" />
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.Chatbox/QuantumHub.Plugin.Chatbox.csproj" />
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.Notifications/QuantumHub.Plugin.Notifications.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.PicoAntiSleep/QuantumHub.Plugin.PicoAntiSleep.csproj" />
+  </ItemGroup>
+</Project>

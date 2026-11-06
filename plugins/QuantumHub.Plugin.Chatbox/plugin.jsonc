@@ -1,0 +1,91 @@
+// Собирает строки из других плагинов и показывает их в чатбоксе VRChat.
+{
+  "id": "qh.vrchat.chatbox",
+  "name": "VRChat Chatbox",
+  "version": "1.0.0",
+  "description": "Показывает в чатбоксе VRChat статус, активное окно, загрузку компьютера, время и музыку. Пока запущена игра, открыто окошко для статуса и сообщений.",
+  "author": "QuantumDevTeam",
+  "service": { "assembly": "QuantumHub.Plugin.Chatbox.dll" },
+  "provides": [ { "name": "vrchat.chatbox", "version": "1.0.0" } ],
+  "dependencies": [
+    { "capability": "vrchat.osc", "version": ">=1.0.0" },
+    { "capability": "user.activity", "version": ">=1.0.0" },
+    { "capability": "media.player", "version": ">=1.0.0", "optional": true, "when": "lazy" },
+    { "capability": "system.stats", "version": ">=1.0.0", "optional": true, "when": "lazy" }
+  ],
+  "settings": [
+    {
+      "key": "sending",
+      "type": "bool",
+      "group": "Отправка",
+      "title": "Отправлять в VRChat",
+      "description": "Только пока игра запущена.",
+      "default": true
+    },
+    {
+      "key": "intervalSeconds",
+      "type": "number",
+      "group": "Отправка",
+      "title": "Обновлять раз в, секунд",
+      "description": "Чаще VRChat всё равно не покажет.",
+      "default": 3,
+      "min": 2,
+      "max": 30
+    },
+    {
+      "key": "chatHoldSeconds",
+      "type": "number",
+      "group": "Отправка",
+      "title": "Держать сообщение, секунд",
+      "description": "Сколько отправленное сообщение остаётся вместо обычных строк.",
+      "default": 8,
+      "min": 2,
+      "max": 60
+    },
+    {
+      "key": "openPanel",
+      "type": "bool",
+      "group": "Отправка",
+      "title": "Открывать мини-окно вместе с игрой",
+      "default": true
+    },
+    { "key": "modStatus", "type": "bool", "group": "Что показывать", "title": "Личный статус", "default": true },
+    {
+      "key": "modWindow",
+      "type": "bool",
+      "group": "Что показывать",
+      "title": "Активность окна",
+      "description": "В VR показывает, что ты в VR, иначе приложение в фокусе.",
+      "default": true
+    },
+    { "key": "modComponent", "type": "bool", "group": "Что показывать", "title": "Загрузка компьютера", "default": false },
+    { "key": "modTime", "type": "bool", "group": "Что показывать", "title": "Текущее время", "default": true },
+    { "key": "modMedia", "type": "bool", "group": "Что показывать", "title": "Музыка", "default": true },
+    {
+      "key": "vrText",
+      "type": "string",
+      "group": "Оформление",
+      "title": "Текст в VR",
+      "default": "In VR"
+    },
+    {
+      "key": "timeFormat",
+      "type": "string",
+      "group": "Оформление",
+      "title": "Формат времени",
+      "description": "Например HH:mm или hh:mm tt.",
+      "default": "HH:mm"
+    },
+    {
+      "key": "showProgress",
+      "type": "bool",
+      "group": "Оформление",
+      "title": "Полоса прогресса трека",
+      "default": true
+    },
+    { "key": "showCpu", "type": "bool", "group": "Загрузка компьютера", "title": "Процессор", "default": true },
+    { "key": "showGpu", "type": "bool", "group": "Загрузка компьютера", "title": "Видеокарта", "default": true },
+    { "key": "showRam", "type": "bool", "group": "Загрузка компьютера", "title": "Оперативная память", "default": true },
+    { "key": "showVram", "type": "bool", "group": "Загрузка компьютера", "title": "Видеопамять", "default": true }
+  ]
+}

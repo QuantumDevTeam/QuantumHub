@@ -1,13 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(QhWindows)</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
 
-    <PropertyGroup>
-        <TargetFramework>net9.0-windows</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-    </PropertyGroup>
-    
-    <ItemGroup>
-        <ProjectReference Include="../QuantumHub.Contracts/QuantumHub.Contracts.csproj"/>
-    </ItemGroup>
-
+  <ItemGroup>
+    <ProjectReference Include="../QuantumHub.Contracts/QuantumHub.Contracts.csproj" />
+  </ItemGroup>
 </Project>

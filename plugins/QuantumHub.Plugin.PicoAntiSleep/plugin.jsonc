@@ -1,0 +1,45 @@
+// Аддон: про SteamVR узнаёт от VR Switcher. не даёт шлему Pico уснуть, регулярно посылая ему WAKEUP по ADB.
+{
+  "id": "qh.vr.pico.antisleep",
+  "name": "Pico Sleep Mode",
+  "version": "1.0.0",
+  "description": "Не даёт шлему Pico заснуть: раз в минуту посылает ему сигнал по ADB через Wi-Fi.",
+  "author": "QuantumDevTeam",
+  "service": { "assembly": "QuantumHub.Plugin.PicoAntiSleep.dll" },
+  "dependencies": [ { "capability": "vr.session", "version": ">=1.0.0" } ],
+  "settings": [
+    {
+      "key": "address",
+      "group": "Шлем",
+      "type": "string",
+      "title": "IP шлема",
+      "description": "Порт можно не указывать, по умолчанию 5555.",
+      "default": "192.168.1.150"
+    },
+    {
+      "key": "intervalSeconds",
+      "group": "Шлем",
+      "type": "number",
+      "title": "Интервал, секунд",
+      "default": 60,
+      "min": 10,
+      "max": 300
+    },
+    {
+      "key": "autoWithVr",
+      "group": "Шлем",
+      "type": "bool",
+      "title": "Включать вместе с SteamVR",
+      "description": "Иначе только кнопкой.",
+      "default": false
+    },
+    {
+      "key": "adbPath",
+      "group": "ADB",
+      "type": "string",
+      "title": "Путь к adb.exe",
+      "description": "Пусто значит искать в папке плагина, в PATH и в Android SDK.",
+      "default": ""
+    }
+  ]
+}

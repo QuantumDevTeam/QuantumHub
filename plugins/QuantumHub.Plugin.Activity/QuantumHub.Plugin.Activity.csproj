@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <None Update="plugin.jsonc" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="icon.png" LogicalName="icon.png" />
+  </ItemGroup>
+</Project>

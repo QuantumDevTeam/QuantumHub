@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package quantum.hub.v1;
+option csharp_namespace = "QuantumHub.Contracts.Proto";
+
+// Единственный формат сообщений хаба. Хаб маршрутизирует по этим полям и никогда
+// не заглядывает в payload: формат тела принадлежит плагинам (смотри content_type).
+message Envelope {
+  // Запрос, ответ или событие.
+  EnvelopeKind kind = 1;
+  // Связывает RESPONSE с его REQUEST. Уникален в пределах отправителя и соединения.
+  uint64 id = 2;
+  // Кто отправил. Для всего, что пришло по IPC, заполняется хабом, поэтому подделать нельзя.
+  string source = 3;
+  // Кому: "hub", id плагина, "cap:<возможность>" или "session:<id сессии>".
+  string target = 4;
+  // Имя метода для REQUEST, топик для EVENT.
+  string method = 5;
+  // "application/x-protobuf", "application/json", "text/plain" или что угодно, что придумает плагин.
+  string content_type = 6;
+  // Тело сообщения. Хаб его не читает.
+  bytes payload = 7;
+  // Результат выполнения, только для RESPONSE.
+  StatusCode status = 8;
+  // Описание ошибки для человека, если status не OK.
+  string error = 9;
+  // Произвольные метаданные.
+  map<string, string> headers = 10;
+}
+
+// Тип сообщения.
+enum EnvelopeKind {
+  // Не задан.
+  ENVELOPE_KIND_UNSPECIFIED = 0;
+  // Ждёт ответа.
+  ENVELOPE_KIND_REQUEST = 1;
+  // Ответ на запрос с тем же id.
+  ENVELOPE_KIND_RESPONSE = 2;
+  // Рассылка подписчикам, ответа не ждёт.
+  ENVELOPE_KIND_EVENT = 3;
+}
+
+// Результат выполнения запроса.
+enum StatusCode {
+  // Успех.
+  STATUS_CODE_OK = 0;
+  // Нет такого адресата, метода или плагина.
+  STATUS_CODE_NOT_FOUND = 1;
+  // Адресат отключился или запрос отменён.
+  STATUS_CODE_UNAVAILABLE = 2;
+  // Неправильные аргументы.
+  STATUS_CODE_INVALID_ARGUMENT = 3;
+  // Условия не выполнены, например плагин выключен или нет зависимости.
+  STATUS_CODE_FAILED_PRECONDITION = 4;
+  // Адресат не ответил вовремя.
+  STATUS_CODE_TIMEOUT = 5;
+  // Внутренняя ошибка, например исключение в плагине.
+  STATUS_CODE_INTERNAL = 6;
+  // Неверный токен при подключении по TCP.
+  STATUS_CODE_UNAUTHENTICATED = 7;
+}

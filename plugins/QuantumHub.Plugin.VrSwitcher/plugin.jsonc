@@ -1,0 +1,74 @@
+// Переводит звук на гарнитуру на время VR. О VR узнаёт от user.activity, звук меняет через audio.devices.
+{
+  "id": "qh.vr.switcher",
+  "name": "VR Switcher",
+  "version": "1.0.0",
+  "description": "Когда запущен SteamVR, переключает наушники и микрофон на VR-гарнитуру, а после выхода возвращает как было.",
+  "author": "QuantumDevTeam",
+  "service": { "assembly": "QuantumHub.Plugin.VrSwitcher.dll" },
+  "provides": [ { "name": "vr.session", "version": "1.0.0" } ],
+  "dependencies": [
+    { "capability": "audio.devices", "version": ">=1.0.0" },
+    { "capability": "user.activity", "version": ">=1.0.0" }
+  ],
+  "settings": [
+    {
+      "key": "preset",
+      "group": "Гарнитура",
+      "type": "choice",
+      "title": "Гарнитура",
+      "description": "Pico и Meta находят свои устройства сами. Custom берёт два поля ниже.",
+      "options": [ "Pico", "Meta", "Custom" ],
+      "default": "Pico"
+    },
+    {
+      "key": "autoSwitch",
+      "group": "Гарнитура",
+      "type": "bool",
+      "title": "Переключать автоматически",
+      "description": "При запуске и закрытии SteamVR.",
+      "default": true
+    },
+    {
+      "key": "customPlayback",
+      "group": "Свои устройства",
+      "type": "string",
+      "title": "Наушники",
+      "description": "Часть имени устройства вывода.",
+      "default": ""
+    },
+    {
+      "key": "customRecording",
+      "group": "Свои устройства",
+      "type": "string",
+      "title": "Микрофон",
+      "description": "Часть имени устройства ввода.",
+      "default": ""
+    },
+    {
+      "key": "pcPlayback",
+      "group": "После VR",
+      "type": "string",
+      "title": "Наушники",
+      "description": "Пусто значит вернуть то, что было до запуска VR.",
+      "default": ""
+    },
+    {
+      "key": "pcRecording",
+      "group": "После VR",
+      "type": "string",
+      "title": "Микрофон",
+      "description": "Пусто значит вернуть то, что было до запуска VR.",
+      "default": ""
+    },
+    {
+      "key": "pollSeconds",
+      "group": "Проверка",
+      "type": "number",
+      "title": "Проверять раз в, секунд",
+      "default": 2,
+      "min": 1,
+      "max": 10
+    }
+  ]
+}

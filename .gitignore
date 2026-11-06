@@ -6,4 +6,5 @@ artifacts/
 *.suo
 .idea/
 TestResults/
-BenchmarkDotNet.Artifacts/
+docs/api/
+.claude/

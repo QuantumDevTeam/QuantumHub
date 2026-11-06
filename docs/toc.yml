@@ -1,0 +1,22 @@
+- name: Начало
+  href: index.md
+- name: Разбор
+  items:
+  - name: Что за проекты
+    href: PROJECTS.md
+  - name: Архитектура
+    href: ARCHITECTURE.md
+  - name: Путь одного сообщения
+    href: WALKTHROUGH.md
+  - name: Приёмы в коде
+    href: TECHNIQUES.md
+  - name: Словарь
+    href: GLOSSARY.md
+- name: Для авторов плагинов
+  items:
+  - name: Как написать плагин
+    href: PLUGINS.md
+  - name: Протокол
+    href: PROTOCOL.md
+- name: API
+  href: api/

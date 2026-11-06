@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(QhWindows)</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../QuantumHub.ProtoMemProtocol/QuantumHub.ProtoMemProtocol.csproj" />
+  </ItemGroup>
+</Project>

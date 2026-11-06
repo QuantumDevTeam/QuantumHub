@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package quantum.hub.v1;
+option csharp_namespace = "QuantumHub.Contracts.Proto";
+
+// Декларативный интерфейс. Плагин на любом языке и в любом процессе описывает страницы этим
+// деревом, а GUI рисует их настоящими контролами. Кому этого мало, тот поставляет нативную
+// сборку интерфейса (смотри PluginManifest.ui).
+message UiNode {
+  // Id узла, приходит обратно в UiEvent.
+  string id = 1;
+  // stack, card, text, button, toggle, textbox, password, number, slider, choice,
+  // infobar, progress, keyvalue, separator. Незнакомый тип показывается как предупреждение.
+  string type = 2;
+  // Постоянные значения свойств.
+  map<string, string> props = 3;
+  // Свойство -> ключ состояния. "config:<ключ>" привязывает к сохранённой настройке плагина,
+  // и обратно значение запишет сам хаб, без участия кода плагина.
+  map<string, string> bindings = 4;
+  // Дочерние узлы.
+  repeated UiNode children = 5;
+}
+
+// Страница плагина, одна вкладка в GUI.
+message UiPage {
+  // Id страницы.
+  string id = 1;
+  // Заголовок вкладки.
+  string title = 2;
+  // Код символа Segoe Fluent Icons, например "E713".
+  string icon = 3;
+  // Содержимое.
+  UiNode root = 4;
+}
+
+// Запрос интерфейса плагина.
+message UiRequest {
+  // Id плагина.
+  string plugin_id = 1;
+}
+
+// Всё, что нужно GUI, чтобы показать плагин.
+message UiResponse {
+  // Декларативные страницы.
+  repeated UiPage pages = 1;
+  // Текущее состояние.
+  map<string, string> state = 2;
+  // Абсолютный путь к нативной сборке интерфейса, если она есть.
+  string native_assembly = 3;
+  // Класс в нативной сборке, если задан явно.
+  string native_type = 4;
+}
+
+// Действие пользователя в интерфейсе.
+message UiEvent {
+  // Id плагина.
+  string plugin_id = 1;
+  // Id страницы.
+  string page_id = 2;
+  // Id узла.
+  string node_id = 3;
+  // "click", "changed" или "submit".
+  string event = 4;
+  // Новое значение.
+  string value = 5;
+  // Ключ состояния, к которому привязано значение узла, если он есть.
+  string bind = 6;
+}
+
+// Изменение состояния, публикуется на топик "hub.ui.state".
+message UiStatePatch {
+  // Id плагина.
+  string plugin_id = 1;
+  // Изменившиеся ключи.
+  map<string, string> state = 2;
+}

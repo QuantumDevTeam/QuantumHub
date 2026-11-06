@@ -1,0 +1,115 @@
+// Следит только за музыкальным плеером: показывает трек и приглушает его, когда звучит что-то другое.
+{
+  "id": "qh.music",
+  "name": "Music",
+  "version": "1.0.0",
+  "description": "Находит музыкальный плеер, показывает уведомление о треке и приглушает музыку, когда говорит другое приложение.",
+  "author": "QuantumDevTeam",
+  "service": { "assembly": "QuantumHub.Plugin.Music.dll" },
+  "provides": [ { "name": "media.player", "version": "1.0.0" } ],
+  "dependencies": [
+    { "capability": "audio.devices", "version": ">=1.0.0", "optional": true },
+    { "capability": "ui.notifications", "version": ">=1.0.0", "optional": true }
+  ],
+  "settings": [
+    {
+      "key": "musicApps",
+      "type": "list",
+      "group": "Плеер",
+      "title": "Музыкальные приложения",
+      "description": "По одному на строку, важнее первые. Всё остальное игнорируется. Подходит часть имени.",
+      "default": [ "YouTube Music", "Spotify" ]
+    },
+    {
+      "key": "notifications",
+      "type": "bool",
+      "group": "Уведомления",
+      "title": "Показывать при смене трека",
+      "default": true
+    },
+    {
+      "key": "notifyPause",
+      "type": "bool",
+      "group": "Уведомления",
+      "title": "Показывать при паузе и продолжении",
+      "default": true
+    },
+    {
+      "key": "showAlbum",
+      "type": "bool",
+      "group": "Уведомления",
+      "title": "Показывать альбом",
+      "default": true
+    },
+    {
+      "key": "ducking",
+      "type": "bool",
+      "group": "Приглушение",
+      "title": "Приглушать музыку",
+      "description": "Когда звучит другое приложение.",
+      "default": true
+    },
+    {
+      "key": "duckMode",
+      "type": "choice",
+      "group": "Приглушение",
+      "title": "Кто приглушает",
+      "description": "whitelist: только приложения из белого списка. blacklist: все, кроме чёрного.",
+      "options": [ "whitelist", "blacklist" ],
+      "default": "whitelist"
+    },
+    {
+      "key": "duckApps",
+      "type": "list",
+      "group": "Приглушение",
+      "title": "Белый список",
+      "description": "По одному на строку. Подходит часть имени процесса.",
+      "default": [ "chrome", "msedge", "discord", "steam", "vlc", "wmplayer", "video.ui", "adobe premiere pro" ]
+    },
+    {
+      "key": "duckIgnore",
+      "type": "list",
+      "group": "Приглушение",
+      "title": "Чёрный список",
+      "description": "Эти приложения музыку не приглушают.",
+      "default": [ "obs64", "nvcontainer", "idle", "audiodg" ]
+    },
+    {
+      "key": "duckVolume",
+      "type": "number",
+      "group": "Приглушение",
+      "title": "Громкость при приглушении, %",
+      "default": 15,
+      "min": 0,
+      "max": 100
+    },
+    {
+      "key": "duckFadeMs",
+      "type": "number",
+      "group": "Приглушение",
+      "title": "Плавность, мс",
+      "default": 150,
+      "min": 0,
+      "max": 2000
+    },
+    {
+      "key": "duckReleaseSeconds",
+      "type": "number",
+      "group": "Приглушение",
+      "title": "Возвращать громкость через, секунд тишины",
+      "default": 3,
+      "min": 1,
+      "max": 30
+    },
+    {
+      "key": "duckThreshold",
+      "type": "number",
+      "group": "Приглушение",
+      "title": "Чувствительность, % уровня сигнала",
+      "description": "Ниже этого приложение считается молчащим.",
+      "default": 1,
+      "min": 1,
+      "max": 30
+    }
+  ]
+}

@@ -1,10 +1,155 @@
 syntax = "proto3";
 
-package quantum.hub.contracts.proto.plugin;
+package quantum.hub.v1;
+option csharp_namespace = "QuantumHub.Contracts.Proto";
 
+import "google/protobuf/struct.proto";
+
+// plugin.jsonc — это данное сообщение в виде JSON. Свободные строки вместо enum делают
+// манифест читаемым и позволяют появляться новым значениям, не ломая старые хабы.
 message PluginManifest {
-  string plugin_id = 1;
+  // Уникальный id: латиница, цифры, точки, дефисы.
+  string id = 1;
+  // Имя для показа.
+  string name = 2;
+  // Версия в формате SemVer.
+  string version = 3;
+  // Описание для показа.
+  string description = 4;
+  // Автор.
+  string author = 5;
+  // Файл в папке плагина или "embedded:<ресурс>" внутри сервисной сборки.
+  string icon = 6;
+  // "startup" (по умолчанию) или "onDemand": запуск при первой необходимости.
+  string activation = 7;
+  // Сборка, которая загружается в хаб.
+  PluginEntry service = 8;
+  // Необязательная сборка с нативным интерфейсом, загружается в GUI.
+  PluginEntry ui = 9;
+  // Возможности, которые плагин предоставляет другим.
+  repeated Capability provides = 10;
+  // Что нужно плагину для работы.
+  repeated Dependency dependencies = 11;
+  // Настройки, для которых хаб сам построит страницу.
+  repeated SettingDescriptor settings = 12;
+}
+
+// Точка входа в плагин.
+message PluginEntry {
+  // Путь относительно папки плагина.
+  string assembly = 1;
+  // Необязательно. Без него класс находится по [HubPlugin] или реализуемому интерфейсу.
+  string type = 2;
+}
+
+// Именованная возможность: контракт, который могут предоставлять разные плагины.
+message Capability {
+  // Имя, например "system.specs".
+  string name = 1;
+  // Версия контракта.
   string version = 2;
-  repeated string subscribes_to_actions = 3;
-  repeated string provides_actions = 4;
+}
+
+// Зависимость плагина или клиента.
+message Dependency {
+  // Конкретный плагин. Заполняется ровно одно из полей id и capability.
+  string id = 1;
+  // Возможность, неважно кем предоставленная.
+  string capability = 2;
+  // "*", "1.2.3", ">=1.0.0 <2.0.0", "^1.2.0", "~1.2.0". Пусто значит "*".
+  string version = 3;
+  // Можно работать и без неё.
+  bool optional = 4;
+  // "init" (по умолчанию): разрешается до запуска или подключения зависимого.
+  // "lazy": не трогается, пока зависимый сам не спросит через hub.resolve.
+  string when = 5;
+}
+
+// Чем закончился поиск зависимости.
+enum DependencyState {
+  // Не задано.
+  DEPENDENCY_STATE_UNSPECIFIED = 0;
+  // Найдена и работает.
+  DEPENDENCY_STATE_RESOLVED = 1;
+  // Никто её не предоставляет.
+  DEPENDENCY_STATE_MISSING = 2;
+  // Поставщик есть, но версия не подходит.
+  DEPENDENCY_STATE_VERSION_MISMATCH = 3;
+  // Поставщик есть, но не работает: выключен, сломан или не запустился.
+  DEPENDENCY_STATE_FAILED = 4;
+  // Ленивая зависимость, разрешится по запросу.
+  DEPENDENCY_STATE_DEFERRED = 5;
+}
+
+// Результат разрешения одной зависимости.
+message DependencyResolution {
+  // Что искали.
+  Dependency dependency = 1;
+  // Чем закончилось.
+  DependencyState state = 2;
+  // Кто предоставляет.
+  string provider_id = 3;
+  // Его версия.
+  string provider_version = 4;
+  // Пояснение для человека, если не получилось.
+  string detail = 5;
+}
+
+// Описание настройки: хаб хранит её и строит для неё интерфейс, поэтому плагин получает
+// рабочую страницу настроек, не написав ни строки UI.
+message SettingDescriptor {
+  // Ключ в конфиге.
+  string key = 1;
+  // "string", "secret" (поле со скрытым вводом), "bool", "number", "choice" или "list": список строк, по одной на строку поля.
+  string type = 2;
+  // Название для показа.
+  string title = 3;
+  // Пояснение для показа.
+  string description = 4;
+  // Значение по умолчанию.
+  google.protobuf.Value default = 5;
+  // Варианты для типа "choice".
+  repeated string options = 6;
+  // Нижняя граница для типа "number".
+  double min = 7;
+  // Верхняя граница для типа "number". Если она выше min, будет показан ползунок.
+  double max = 8;
+  // Название группы. Настройки одной группы идут вместе под общим заголовком.
+  string group = 9;
+}
+
+// Состояние плагина.
+enum PluginState {
+  // Не задано.
+  PLUGIN_STATE_UNSPECIFIED = 0;
+  // Не запущен. Для плагина onDemand это нормальное ожидание.
+  PLUGIN_STATE_STOPPED = 1;
+  // Запускается.
+  PLUGIN_STATE_STARTING = 2;
+  // Работает.
+  PLUGIN_STATE_RUNNING = 3;
+  // Останавливается.
+  PLUGIN_STATE_STOPPING = 4;
+  // Выключен пользователем.
+  PLUGIN_STATE_DISABLED = 5;
+  // Сломан: не прочитался или упал при запуске.
+  PLUGIN_STATE_FAULTED = 6;
+  // Ждёт зависимость, запустится сам, когда она появится.
+  PLUGIN_STATE_BLOCKED = 7;
+}
+
+// Сведения о плагине для клиентов.
+message PluginInfo {
+  // Манифест.
+  PluginManifest manifest = 1;
+  // Текущее состояние.
+  PluginState state = 2;
+  // Причина, если плагин сломан или заблокирован.
+  string error = 3;
+  // Включён ли пользователем.
+  bool enabled = 4;
+  // Папка плагина.
+  string path = 5;
+  // Кто не может работать без этого плагина.
+  repeated string dependents = 6;
 }

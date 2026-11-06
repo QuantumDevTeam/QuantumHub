@@ -1,0 +1,17 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <TargetFramework>$(QhWindows)</TargetFramework>
+    <!-- Produces a .deps.json the hub's AssemblyDependencyResolver can read. -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The hub provides these at run time; a private copy would break type identity. -->
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../src/QuantumHub.Contracts/QuantumHub.Contracts.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+</Project>
