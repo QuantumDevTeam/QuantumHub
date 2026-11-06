@@ -18,7 +18,6 @@ public static class PanelRenderer
 
     private static readonly Brush Background = Solid(0x14, 0x16, 0x1C);
     private static readonly Brush Tile = Solid(0x24, 0x28, 0x32);
-    private static readonly Brush TileHover = Solid(0x30, 0x36, 0x44);
     private static readonly Brush TileActive = Solid(0x2B, 0x5C, 0xE6);
     private static readonly Brush TileDisabled = Solid(0x1C, 0x1F, 0x27);
     private static readonly Brush Text = Solid(0xF2, 0xF4, 0xF8);
@@ -34,8 +33,7 @@ public static class PanelRenderer
     /// <summary>Рисует панель.</summary>
     /// <param name="view">Раскладка.</param>
     /// <param name="state">Данные.</param>
-    /// <param name="hovered">Кнопка под лучом контроллера.</param>
-    private static RenderTargetBitmap Draw(PanelView view, PanelState state, string? hovered)
+    private static RenderTargetBitmap Draw(PanelView view, PanelState state)
     {
         var visual = new DrawingVisual();
         using (var context = visual.RenderOpen())
@@ -46,7 +44,7 @@ public static class PanelRenderer
             if (view.Tiles.Count == 0)
                 DrawText(context, Loc.T("Нет плагинов для этой панели. Включи их в QuantumHub.", "No plugins for this panel. Enable them in QuantumHub."), 24, 90, 22, Muted, Regular, 960);
 
-            foreach (var tile in view.Tiles) DrawTile(context, tile, tile.Id == hovered);
+            foreach (var tile in view.Tiles) DrawTile(context, tile);
 
             if (view.Preview is { } preview)
             {
@@ -65,10 +63,10 @@ public static class PanelRenderer
     }
 
     /// <summary>Рисует кнопку.</summary>
-    private static void DrawTile(DrawingContext context, PanelTile tile, bool hovered)
+    private static void DrawTile(DrawingContext context, PanelTile tile)
     {
         var rect = new Rect(tile.Bounds.X, tile.Bounds.Y, tile.Bounds.Width, tile.Bounds.Height);
-        var fill = !tile.Enabled ? TileDisabled : tile.Active ? TileActive : hovered ? TileHover : Tile;
+        var fill = !tile.Enabled ? TileDisabled : tile.Active ? TileActive : Tile;
         context.DrawRoundedRectangle(fill, null, rect, Radius, Radius);
 
         var width = rect.Width - 28;
@@ -98,11 +96,10 @@ public static class PanelRenderer
     /// <summary>Рисует панель для SteamVR.</summary>
     /// <param name="view">Раскладка.</param>
     /// <param name="state">Данные.</param>
-    /// <param name="hovered">Кнопка под лучом контроллера.</param>
     /// <returns>Пиксели RGBA.</returns>
-    public static byte[] RenderRgba(PanelView view, PanelState state, string? hovered)
+    public static byte[] RenderRgba(PanelView view, PanelState state)
     {
-        var bitmap = Draw(view, state, hovered);
+        var bitmap = Draw(view, state);
         var pixels = new byte[PanelLayout.Width * PanelLayout.Height * 4];
         bitmap.CopyPixels(pixels, PanelLayout.Width * 4, 0);
 
@@ -115,11 +112,10 @@ public static class PanelRenderer
     /// <param name="view">Раскладка.</param>
     /// <param name="state">Данные.</param>
     /// <param name="path">Куда сохранить PNG.</param>
-    /// <param name="hovered">Кнопка под лучом контроллера.</param>
-    public static void SavePng(PanelView view, PanelState state, string path, string? hovered = null)
+    public static void SavePng(PanelView view, PanelState state, string path)
     {
         var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(Draw(view, state, hovered)));
+        encoder.Frames.Add(BitmapFrame.Create(Draw(view, state)));
         using var file = File.Create(path);
         encoder.Save(file);
     }
@@ -129,8 +125,8 @@ public static class PanelRenderer
 public sealed class WpfPanelPainter : IPanelPainter
 {
     /// <inheritdoc/>
-    public byte[] Rgba(PanelView view, PanelState state, string? hovered) => PanelRenderer.RenderRgba(view, state, hovered);
+    public byte[] Rgba(PanelView view, PanelState state) => PanelRenderer.RenderRgba(view, state);
 
     /// <inheritdoc/>
-    public void Png(PanelView view, PanelState state, string? hovered, string path) => PanelRenderer.SavePng(view, state, path, hovered);
+    public void Png(PanelView view, PanelState state, string path) => PanelRenderer.SavePng(view, state, path);
 }

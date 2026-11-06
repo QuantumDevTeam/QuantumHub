@@ -38,8 +38,8 @@ public sealed record PanelState(
 /// <param name="Discord">Discord.</param>
 /// <param name="Sleep">Режим сна.</param>
 /// <param name="Chatbox">Чатбокс.</param>
-/// <param name="FlipPointer">Считать координаты луча снизу вверх.</param>
-public sealed record PanelOptions(bool Audio = true, bool Discord = true, bool Sleep = true, bool Chatbox = true, bool FlipPointer = false);
+/// <param name="FlipPointer">Считать координаты луча снизу вверх. Так их присылает SteamVR.</param>
+public sealed record PanelOptions(bool Audio = true, bool Discord = true, bool Sleep = true, bool Chatbox = true, bool FlipPointer = true);
 
 /// <summary>Прямоугольник на панели.</summary>
 /// <param name="X">Левый край.</param>

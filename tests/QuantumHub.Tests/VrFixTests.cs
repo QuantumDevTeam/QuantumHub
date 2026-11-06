@@ -124,15 +124,20 @@ public sealed class VrFixTests
 
     private sealed class FakePainter : IPanelPainter
     {
-        public byte[] Rgba(PanelView view, PanelState state, string? hovered) => [];
-        public void Png(PanelView view, PanelState state, string? hovered, string path) { }
+        /// <summary>Что вернёт рисование: тест меняет это, как будто изменилась картинка.</summary>
+        public byte Pixel { get; set; }
+
+        public byte[] Rgba(PanelView view, PanelState state) => [Pixel];
+        public void Png(PanelView view, PanelState state, string path) { }
     }
 
     private sealed class FakeBus : IHubBus
     {
         private readonly Lock _gate = new();
         private readonly List<(string Method, string Payload)> _calls = [];
-        public bool Flip { get; init; }
+        /// <summary>Настройка луча: считать ли его снизу вверх, как это делает SteamVR.</summary>
+        public bool Flip { get; init; } = true;
+        public string Status { get; set; } = "tea";
 
         public IReadOnlyList<(string Method, string Payload)> Calls
         {
@@ -146,11 +151,11 @@ public sealed class VrFixTests
         {
             var reply = method switch
             {
-                "hub.config.get" => HubPayload.Proto(new ConfigValue { Found = true, Json = Flip ? """{ "flipPointer": true }""" : "{}" }),
+                "hub.config.get" => HubPayload.Proto(new ConfigValue { Found = true, Json = Flip ? "{}" : """{ "flipPointer": false }""" }),
                 "session.get" => HubPayload.Text("""{ "onHeadset": false }"""),
                 "discord.state" => HubPayload.Text("""{ "connected": true, "authorized": true, "muted": false }"""),
                 "sleep.get" => HubPayload.Text("""{ "enabled": false }"""),
-                "chatbox.state" => HubPayload.Text("""{ "gameRunning": true, "sending": true, "status": "tea", "statuses": ["tea"], "preview": "x" }"""),
+                "chatbox.state" => HubPayload.Text($$"""{ "gameRunning": true, "sending": true, "status": "{{Status}}", "statuses": ["tea"], "preview": "x" }"""),
                 _ => HubPayload.Empty,
             };
 
@@ -165,9 +170,9 @@ public sealed class VrFixTests
         public ValueTask<IReadOnlyList<DependencyResolution>> ResolveAsync(IEnumerable<Dependency> dependencies, CancellationToken token = default) => throw new NotSupportedException();
     }
 
-    private static async Task<(OverlayHost Host, PanelView View)> ReadyAsync(FakeRuntime runtime, FakeBus bus)
+    private static async Task<(OverlayHost Host, PanelView View)> ReadyAsync(FakeRuntime runtime, FakeBus bus, FakePainter? painter = null)
     {
-        var host = new OverlayHost(runtime, new FakePainter(), new PanelClient(bus), _ => { });
+        var host = new OverlayHost(runtime, painter ?? new FakePainter(), new PanelClient(bus), _ => { });
         await host.RefreshAsync();
         Assert.True(host.Step());
 
@@ -176,7 +181,7 @@ public sealed class VrFixTests
         return (host, PanelLayout.Build(await client.ReadAsync(options), options));
     }
 
-    private static OverlayInput At(PanelView view, string id, OverlayInputKind kind = OverlayInputKind.Press, bool flip = false)
+    private static OverlayInput At(PanelView view, string id, OverlayInputKind kind = OverlayInputKind.Press, bool flip = true)
     {
         var bounds = view.Tiles.Single(tile => tile.Id == id).Bounds;
         var y = bounds.Y + bounds.Height / 2;
@@ -190,7 +195,7 @@ public sealed class VrFixTests
     }
 
     [Fact]
-    public async Task A_press_goes_where_the_beam_points_with_the_origin_at_the_top()
+    public async Task A_press_goes_where_the_beam_points_counting_from_the_bottom()
     {
         var runtime = new FakeRuntime();
         var bus = new FakeBus();
@@ -205,13 +210,13 @@ public sealed class VrFixTests
     }
 
     [Fact]
-    public async Task The_flip_setting_turns_the_pointer_over()
+    public async Task The_setting_can_count_the_pointer_from_the_top()
     {
         var runtime = new FakeRuntime();
-        var bus = new FakeBus { Flip = true };
+        var bus = new FakeBus { Flip = false };
         var (host, view) = await ReadyAsync(runtime, bus);
 
-        runtime.Inputs.Enqueue(At(view, PanelLayout.Sleep, flip: true));
+        runtime.Inputs.Enqueue(At(view, PanelLayout.Sleep, flip: false));
         host.Step();
 
         await UntilAsync(() => bus.Calls.Count > 0);
@@ -243,17 +248,39 @@ public sealed class VrFixTests
     }
 
     [Fact]
-    public async Task Moving_the_beam_redraws_only_when_the_button_under_it_changes()
+    public async Task Moving_the_beam_does_not_touch_the_picture()
     {
         var runtime = new FakeRuntime();
         var (host, view) = await ReadyAsync(runtime, new FakeBus());
         var before = runtime.Pixels;
 
         runtime.Inputs.Enqueue(At(view, PanelLayout.Audio, OverlayInputKind.Move));
-        runtime.Inputs.Enqueue(At(view, PanelLayout.Audio, OverlayInputKind.Move));
+        runtime.Inputs.Enqueue(At(view, PanelLayout.Mute, OverlayInputKind.Move));
         host.Step();
 
-        Assert.Equal(before + 1, runtime.Pixels);
+        Assert.Equal(before, runtime.Pixels);
+    }
+
+    [Fact]
+    public async Task The_same_picture_is_not_sent_twice()
+    {
+        var runtime = new FakeRuntime();
+        var bus = new FakeBus();
+        var painter = new FakePainter();
+        var (host, _) = await ReadyAsync(runtime, bus, painter);
+        Assert.Equal(1, runtime.Pixels);
+
+        // Данные другие, а картинка та же: например, поменялся статус, которого не видно.
+        bus.Status = "coffee";
+        await host.RefreshAsync();
+        host.Step();
+        Assert.Equal(1, runtime.Pixels);
+
+        painter.Pixel = 1;
+        bus.Status = "water";
+        await host.RefreshAsync();
+        host.Step();
+        Assert.Equal(2, runtime.Pixels);
     }
 
     [Fact]

@@ -70,15 +70,13 @@ public interface IPanelPainter
     /// <summary>Рисует в пиксели RGBA.</summary>
     /// <param name="view">Раскладка.</param>
     /// <param name="state">Данные.</param>
-    /// <param name="hovered">Кнопка под лучом.</param>
-    byte[] Rgba(PanelView view, PanelState state, string? hovered);
+    byte[] Rgba(PanelView view, PanelState state);
 
     /// <summary>Рисует в файл PNG.</summary>
     /// <param name="view">Раскладка.</param>
     /// <param name="state">Данные.</param>
-    /// <param name="hovered">Кнопка под лучом.</param>
     /// <param name="path">Куда.</param>
-    void Png(PanelView view, PanelState state, string? hovered, string path);
+    void Png(PanelView view, PanelState state, string path);
 }
 
 /// <summary>Логика вкладки в меню SteamVR: что показать и что сделать по нажатию.</summary>
@@ -98,8 +96,9 @@ public sealed class OverlayHost(IOverlayRuntime runtime, IPanelPainter painter, 
     private PanelOptions _options = new();
     private PanelState _state = new();
     private PanelView _view = new([], null);
-    private string? _hovered;
     private bool _dirty = true;
+    /// <summary>Что сейчас показано. Замена картинки в SteamVR заметна глазу, поэтому такая же картинка не отправляется.</summary>
+    private byte[]? _shown;
     /// <summary>SteamVR отказался принимать пиксели, и картинка идёт через файл.</summary>
     private bool _useFile;
     /// <summary>Файлов два: SteamVR читает файл с задержкой и не должен застать его наполовину записанным.</summary>
@@ -208,9 +207,13 @@ public sealed class OverlayHost(IOverlayRuntime runtime, IPanelPainter painter, 
 
         _view = PanelLayout.Build(state, options);
 
+        var pixels = painter.Rgba(_view, state);
+        if (_shown is not null && pixels.AsSpan().SequenceEqual(_shown)) return;
+        _shown = pixels;
+
         if (!_useFile)
         {
-            var error = runtime.ShowPixels(painter.Rgba(_view, state, _hovered));
+            var error = runtime.ShowPixels(pixels);
             if (error is null) return;
 
             // Размер данных для этого вызова ограничен, а файл принимается всегда.
@@ -220,7 +223,7 @@ public sealed class OverlayHost(IOverlayRuntime runtime, IPanelPainter painter, 
 
         _fileIndex ^= 1;
         var path = Path.Combine(Path.GetTempPath(), $"QuantumHub.VrDashboard.{Environment.ProcessId}.{_fileIndex}.png");
-        painter.Png(_view, state, _hovered, path);
+        painter.Png(_view, state, path);
         if (runtime.ShowFile(path) is { } fileError) log($"SetOverlayFromFile failed: {fileError}");
     }
 
@@ -229,13 +232,6 @@ public sealed class OverlayHost(IOverlayRuntime runtime, IPanelPainter painter, 
     {
         switch (input.Kind)
         {
-            case OverlayInputKind.Move:
-                var hovered = TileAt(input)?.Id;
-                if (hovered == _hovered) break;
-                _hovered = hovered;
-                Volatile.Write(ref _dirty, true);
-                break;
-
             case OverlayInputKind.Press:
                 var tile = TileAt(input);
                 log($"Press at {input.X:0},{input.Y:0}: {tile?.Id ?? "nothing"}");
@@ -252,7 +248,7 @@ public sealed class OverlayHost(IOverlayRuntime runtime, IPanelPainter painter, 
         }
     }
 
-    /// <summary>Кнопка под лучом. Настройка переворота нужна на случай, если у какой-то версии SteamVR начало координат внизу.</summary>
+    /// <summary>Кнопка под лучом. SteamVR считает координаты от нижнего края панели, а раскладка от верхнего.</summary>
     private PanelTile? TileAt(OverlayInput input) =>
         PanelLayout.HitTest(_view, input.X, _options.FlipPointer ? PanelLayout.Height - input.Y : input.Y);
 
