@@ -218,14 +218,16 @@ public sealed class UiRenderer(HubConnection hub, string pluginId, string pageId
         {
             if (focused) return;
             box.Text = value;
-            sent = value;
+
+            // Поле заменяет \n на \r, и сравнивать надо с тем, что в нём оказалось. Иначе простой щелчок по полю считался бы правкой.
+            sent = box.Text;
         });
 
         void Commit()
         {
             if (box.Text == sent) return;
             sent = box.Text;
-            Send(node, "changed", box.Text);
+            Send(node, "changed", box.Text.Replace("\r\n", "\n").Replace('\r', '\n'));
         }
 
         box.GotFocus += (_, _) => focused = true;

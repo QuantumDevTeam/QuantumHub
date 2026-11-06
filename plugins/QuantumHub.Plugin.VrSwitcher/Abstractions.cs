@@ -52,6 +52,12 @@ public interface IVrAudioMemory
 
     /// <summary>Устройство ввода до VR.</summary>
     string? Recording { get; set; }
+
+    /// <summary>Последнее устройство вывода не из гарнитуры. Нужно, если на момент переключения звук уже был на гарнитуре.</summary>
+    string? DesktopPlayback { get; set; }
+
+    /// <summary>Последнее устройство ввода не из гарнитуры.</summary>
+    string? DesktopRecording { get; set; }
 }
 
 /// <summary>Настройки, которые движок читает на каждом шаге.</summary>

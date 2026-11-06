@@ -11,7 +11,30 @@ namespace QuantumHub.Plugin.Notifications;
 /// <param name="Subtitle">Вторая строка.</param>
 /// <param name="ImageBase64">Картинка в base64, обычно png или jpeg.</param>
 /// <param name="Badge">Значок поверх картинки, сейчас только "pause".</param>
-public sealed record NotificationRequest(string? Key, string Title, string? Subtitle, string? ImageBase64, string? Badge);
+/// <param name="Actions">Кнопки. Без них окошко пропускает щелчки сквозь себя, с ними ловит. Нужен <paramref name="Key"/>.</param>
+/// <param name="DurationSeconds">Сколько показывать вместо обычной настройки: кнопку надо успеть нажать.</param>
+public sealed record NotificationRequest(
+    string? Key,
+    string Title,
+    string? Subtitle,
+    string? ImageBase64,
+    string? Badge,
+    IReadOnlyList<NotificationAction>? Actions = null,
+    double? DurationSeconds = null);
+
+/// <summary>Кнопка в окошке.</summary>
+/// <param name="Id">Что придёт в событии notify.action.</param>
+/// <param name="Label">Надпись.</param>
+public sealed record NotificationAction(string Id, string Label);
+
+/// <summary>Запрос notify.action и тело одноимённого события.</summary>
+/// <param name="Key">Ключ окошка.</param>
+/// <param name="Action">Id нажатой кнопки.</param>
+public sealed record NotificationClick(string Key, string Action);
+
+/// <summary>Запрос notify.hide и тело одноимённого события.</summary>
+/// <param name="Key">Ключ окошка, которое пора убрать.</param>
+public sealed record NotificationHide(string Key);
 
 /// <summary>То, что получает внешняя часть: запрос вместе с настройками внешнего вида.</summary>
 /// <param name="Request">Что показать.</param>
@@ -38,6 +61,14 @@ public sealed class NotificationsPlugin : IHubPlugin, IUiProvider
     /// <summary>Топик, который слушает внешняя часть.</summary>
     public const string DisplayTopic = "notify.display";
 
+    /// <summary>Топик нажатия на кнопку. Тело: <see cref="NotificationClick"/> в JSON.</summary>
+    public const string ActionTopic = "notify.action";
+
+    /// <summary>Топик, который просит внешнюю часть убрать окошко. Тело: <see cref="NotificationHide"/> в JSON.</summary>
+    public const string HideTopic = "notify.hide";
+
+    private const double MaxDurationSeconds = 120;
+
     private IPluginContext _context = null!;
     private CompanionProcess _overlay = null!;
     private NotificationDisplay? _last;
@@ -56,6 +87,28 @@ public sealed class NotificationsPlugin : IHubPlugin, IUiProvider
             return ValueTask.FromResult(HubPayload.Empty);
         });
 
+        context.Bus.Handle("notify.hide", async (request, token) =>
+        {
+            var hide = request.Payload.AsJson<NotificationHide>();
+            if (string.IsNullOrEmpty(hide?.Key)) throw new HubCallException(StatusCode.InvalidArgument, "Нужен ключ окошка.");
+
+            Forget(hide.Key);
+            await context.Bus.PublishAsync(HideTopic, HubPayload.Json(hide), token);
+            return HubPayload.Empty;
+        });
+
+        // Сюда обращается внешняя часть. Кто показывал окошко, тот и подписан на событие.
+        context.Bus.Handle("notify.action", async (request, token) =>
+        {
+            var click = request.Payload.AsJson<NotificationClick>();
+            if (string.IsNullOrEmpty(click?.Key) || string.IsNullOrEmpty(click.Action))
+                throw new HubCallException(StatusCode.InvalidArgument, "Нужны ключ окошка и кнопка.");
+
+            Forget(click.Key);
+            await context.Bus.PublishAsync(ActionTopic, HubPayload.Json(click), token);
+            return HubPayload.Empty;
+        });
+
         // Запущенная по требованию внешняя часть подключается позже, чем было отправлено первое уведомление.
         context.Bus.Handle("notify.pending", (_, _) => ValueTask.FromResult(HubPayload.Json(_last)));
         return Task.CompletedTask;
@@ -68,11 +121,18 @@ public sealed class NotificationsPlugin : IHubPlugin, IUiProvider
         return Task.CompletedTask;
     }
 
+    /// <summary>Закрытое окошко не должно всплыть снова, когда внешняя часть спросит, что она пропустила.</summary>
+    private void Forget(string key)
+    {
+        if (_last?.Request.Key == key) _last = null;
+    }
+
     private void Show(NotificationRequest request)
     {
         var config = _context.Config;
+        var seconds = Math.Clamp(request.DurationSeconds ?? config.Get("durationSeconds", 3d), 1, MaxDurationSeconds);
         var display = new NotificationDisplay(request,
-            (int)(config.Get("durationSeconds", 3d) * 1000),
+            (int)(seconds * 1000),
             config.Get("opacity", 85d) / 100,
             config.Get("marginRight", 20d),
             config.Get("marginTop", 20d),

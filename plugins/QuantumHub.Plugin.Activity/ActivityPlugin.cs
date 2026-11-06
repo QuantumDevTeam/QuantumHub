@@ -154,7 +154,12 @@ public sealed class ActivityPlugin : IHubPlugin, IUiProvider
 
     private static bool IsRunning(string name)
     {
-        var processes = Process.GetProcessesByName(name);
+        // В настройке имя могут написать и как vrserver.exe, а система ищет без расширения.
+        var bare = name.Trim();
+        if (bare.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) bare = bare[..^4];
+        if (bare.Length == 0) return false;
+
+        var processes = Process.GetProcessesByName(bare);
         var found = processes.Length > 0;
         foreach (var process in processes) process.Dispose();
         return found;

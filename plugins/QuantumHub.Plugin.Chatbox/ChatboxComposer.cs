@@ -27,7 +27,8 @@ public sealed record StatsInfo(double CpuPercent, double RamUsedGb, double RamTo
 /// <param name="Media">Музыка.</param>
 /// <param name="Now">Текущее время.</param>
 /// <param name="WindowTitle">Заголовок окна в фокусе.</param>
-public sealed record ChatInputs(string? Status, string? WindowProcess, bool IsVr, StatsInfo? Stats, MediaInfo? Media, DateTimeOffset Now, string? WindowTitle = null);
+/// <param name="Away">Пользователь отошёл.</param>
+public sealed record ChatInputs(string? Status, string? WindowProcess, bool IsVr, StatsInfo? Stats, MediaInfo? Media, DateTimeOffset Now, string? WindowTitle = null, bool Away = false);
 
 /// <summary>Какие строки показывать.</summary>
 /// <param name="Status">Личный статус.</param>
@@ -47,6 +48,7 @@ public sealed record ChatModules(bool Status, bool Window, bool Component, bool 
 /// <param name="Vram">Показывать видеопамять.</param>
 /// <param name="WindowSource">Что писать про окно: "process", "title" или "both".</param>
 /// <param name="Template">Свой шаблон по строке на элемент. Если он задан, выбор строк и их порядок берутся из него.</param>
+/// <param name="AwayText">Что показать вместо статуса, когда пользователь отошёл.</param>
 public sealed record ChatFormat(
     string VrText = "In VR",
     string TimeFormat = "HH:mm",
@@ -56,7 +58,8 @@ public sealed record ChatFormat(
     bool Ram = true,
     bool Vram = true,
     string WindowSource = "process",
-    IReadOnlyList<string>? Template = null);
+    IReadOnlyList<string>? Template = null,
+    string AwayText = "Away");
 
 /// <summary>Собирает текст чатбокса. Чистая функция: на входе данные, на выходе строка.</summary>
 public static class ChatboxComposer
@@ -86,7 +89,8 @@ public static class ChatboxComposer
 
         // Чем больше число, тем раньше строка уйдёт при нехватке места. Порядок в списке — порядок на экране.
         var lines = new List<(string Text, int DropOrder)>();
-        if (modules.Status && !string.IsNullOrWhiteSpace(inputs.Status)) lines.Add(($"💬 {inputs.Status.Trim()}", 0));
+        if (modules.Status && inputs.Away) lines.Add(($"💤 {format.AwayText}", 0));
+        else if (modules.Status && !string.IsNullOrWhiteSpace(inputs.Status)) lines.Add(($"💬 {inputs.Status.Trim()}", 0));
         if (modules.Window && WindowLine(inputs, format) is { } window) lines.Add((window, 4));
         if (modules.Component && inputs.Stats is { } stats && StatsLine(stats, format) is { Length: > 0 } load) lines.Add((load, 5));
         if (modules.Time) lines.Add((TimeLine(inputs.Now, format), 3));
@@ -116,7 +120,7 @@ public static class ChatboxComposer
     {
         if (!HasTemplate(format)) return modules;
         var used = format!.Template!.SelectMany(line => Placeholder.Matches(line)).Select(match => match.Groups[1].Value).ToHashSet();
-        return new ChatModules(used.Contains("status"), used.Overlaps(WindowKeys), used.Overlaps(StatsKeys), used.Contains("time"), used.Overlaps(MediaKeys));
+        return new ChatModules(used.Contains("status") || used.Contains("away"), used.Overlaps(WindowKeys), used.Overlaps(StatsKeys), used.Contains("time"), used.Overlaps(MediaKeys));
     }
 
     /// <summary>
@@ -151,7 +155,8 @@ public static class ChatboxComposer
         var stats = inputs.Stats;
         return new Dictionary<string, string>
         {
-            ["status"] = inputs.Status?.Trim() ?? string.Empty,
+            ["status"] = inputs.Away ? format.AwayText : inputs.Status?.Trim() ?? string.Empty,
+            ["away"] = inputs.Away ? format.AwayText : string.Empty,
             ["window"] = inputs.IsVr ? format.VrText : WindowName(inputs, format) ?? string.Empty,
             ["process"] = inputs.WindowProcess ?? string.Empty,
             ["title"] = inputs.WindowTitle ?? string.Empty,

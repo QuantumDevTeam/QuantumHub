@@ -2,7 +2,7 @@
 {
   "id": "qh.discord",
   "name": "Discord",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Подключается к запущенному Discord: мьют, текущий канал, участники, пинг, Rich Presence. Им пользуются другие плагины.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.Discord.dll" },

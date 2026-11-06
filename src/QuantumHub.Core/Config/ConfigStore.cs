@@ -62,14 +62,50 @@ public sealed class ConfigStore : IDisposable
     public void ApplyDefaults(PluginManifest manifest)
     {
         var document = Open(manifest.Id);
+        var repaired = false;
         lock (document)
         {
             foreach (var setting in manifest.Settings)
             {
+                if (setting.Type == "list" && document.Values[setting.Key] is JsonArray list && Repaired(list) is { } fixedList)
+                {
+                    document.Values[setting.Key] = fixedList;
+                    document.Dirty = true;
+                    repaired = true;
+                    _log.Warning($"Repaired the list '{setting.Key}' of {manifest.Id}");
+                }
+
                 if (setting.Default is null || document.Values.ContainsKey(setting.Key)) continue;
                 document.Values[setting.Key] = JsonNode.Parse(JsonFormatter.Default.Format(setting.Default));
             }
         }
+
+        if (repaired) _timer.Change(SaveDelay, Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>
+    /// Чинит список, в котором несколько значений слиплись в одну строку. Так сохраняла их версия 0.1.0: поле WinUI
+    /// разделяет строки символом \r, а хаб делил только по \n.
+    /// </summary>
+    /// <returns>Исправленный список или <see langword="null"/>, если он в порядке.</returns>
+    private static JsonArray? Repaired(JsonArray list)
+    {
+        var values = list.Select(item => item is JsonValue value && value.TryGetValue<string>(out var text) ? text : null).ToList();
+        if (!values.Any(text => text is not null && text.AsSpan().IndexOfAny('\r', '\n') >= 0)) return null;
+
+        var result = new JsonArray();
+        foreach (var (item, text) in list.Zip(values))
+        {
+            if (text is null)
+            {
+                result.Add(item?.DeepClone());
+                continue;
+            }
+
+            foreach (var part in text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) result.Add(part);
+        }
+
+        return result;
     }
 
     /// <summary>Читает значение.</summary>

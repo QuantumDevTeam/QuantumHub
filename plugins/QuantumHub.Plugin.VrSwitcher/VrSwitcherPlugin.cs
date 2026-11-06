@@ -26,7 +26,7 @@ public sealed class VrSwitcherPlugin : IHubPlugin, IUiProvider
     /// <summary>Топик начала и конца VR-сессии. Тело: <see cref="VrSession"/> в JSON.</summary>
     public const string SessionTopic = "vr.session.changed";
 
-    private sealed record DeviceName(string Name);
+    private sealed record DeviceName(string Id, string Name);
 
     private sealed record Current(DeviceName? Playback, DeviceName? Recording);
 
@@ -133,6 +133,8 @@ public sealed class VrSwitcherPlugin : IHubPlugin, IUiProvider
     private void ShowCurrent(HubPayload payload)
     {
         var current = payload.AsJson<Current>();
+        if (current?.Playback is { } playback) _engine.NoteDefault(AudioFlow.Playback, new AudioDevice(playback.Id, playback.Name));
+        if (current?.Recording is { } recording) _engine.NoteDefault(AudioFlow.Recording, new AudioDevice(recording.Id, recording.Name));
         _context.Ui.Set("playback", current?.Playback?.Name ?? Loc.T("нет", "none"));
         _context.Ui.Set("recording", current?.Recording?.Name ?? Loc.T("нет", "none"));
     }
@@ -183,6 +185,18 @@ public sealed class VrSwitcherPlugin : IHubPlugin, IUiProvider
         {
             get => Read("savedRecording");
             set => config.Set("savedRecording", value ?? string.Empty);
+        }
+
+        public string? DesktopPlayback
+        {
+            get => Read("desktopPlayback");
+            set => config.Set("desktopPlayback", value ?? string.Empty);
+        }
+
+        public string? DesktopRecording
+        {
+            get => Read("desktopRecording");
+            set => config.Set("desktopRecording", value ?? string.Empty);
         }
 
         private string? Read(string key) => config.Get<string>(key) is { Length: > 0 } value ? value : null;

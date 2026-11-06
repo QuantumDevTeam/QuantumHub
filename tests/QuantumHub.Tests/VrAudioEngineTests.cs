@@ -57,6 +57,8 @@ public class VrAudioEngineTests
     {
         public string? Playback { get; set; }
         public string? Recording { get; set; }
+        public string? DesktopPlayback { get; set; }
+        public string? DesktopRecording { get; set; }
     }
 
     private readonly FakeAudio _audio = new();
@@ -218,12 +220,67 @@ public class VrAudioEngineTests
         await engine.PollAsync();
 
         Assert.Null(_memory.Playback);
+    }
 
-        _probe.Running = false;
-        await PollTimes(engine, 3);
+    [Fact]
+    public async Task Sound_that_was_already_on_the_headset_still_goes_back_to_the_desktop()
+    {
+        _audio.DefaultPlayback = PicoOut;
+        _audio.DefaultRecording = PicoMic;
+        var engine = Engine();
+        await engine.ApplyNowAsync();
+
+        await engine.RestoreNowAsync();
+
+        Assert.Equal(PcOut, _audio.DefaultPlayback);
+        Assert.Equal(PcMic, _audio.DefaultRecording);
+        Assert.False(engine.OnHeadset);
+    }
+
+    [Fact]
+    public async Task The_last_desktop_device_is_preferred_over_any_other()
+    {
+        const string other = "other-out";
+        _audio.Playback.Insert(0, new AudioDevice(other, "Speakers (Monitor)"));
+        _audio.DefaultPlayback = PicoOut;
+        var engine = Engine();
+        engine.NoteDefault(AudioFlow.Playback, new AudioDevice(PcOut, "Speakers (3- fifine Headset)"));
+        await engine.ApplyNowAsync();
+
+        await engine.RestoreNowAsync();
+
+        Assert.Equal(PcOut, _audio.DefaultPlayback);
+    }
+
+    [Fact]
+    public async Task With_only_the_headset_there_is_nowhere_to_go()
+    {
+        _audio.Playback.RemoveAll(device => device.Id == PcOut);
+        _audio.Recording.RemoveAll(device => device.Id == PcMic);
+        _audio.DefaultPlayback = PicoOut;
+        _audio.DefaultRecording = PicoMic;
+        var engine = Engine();
+        await engine.ApplyNowAsync();
+
+        await engine.RestoreNowAsync();
 
         Assert.Equal(PicoOut, _audio.DefaultPlayback);
         Assert.Contains("Некуда", engine.Status);
+    }
+
+    [Fact]
+    public void The_real_default_device_tells_if_sound_is_on_the_headset()
+    {
+        var engine = Engine();
+        Assert.False(engine.OnHeadset);
+
+        engine.NoteDefault(AudioFlow.Playback, new AudioDevice(PicoOut, "Speakers (Pico Streaming Speaker)"));
+        Assert.True(engine.OnHeadset);
+        Assert.Null(_memory.DesktopPlayback);
+
+        engine.NoteDefault(AudioFlow.Playback, new AudioDevice(PcOut, "Speakers (3- fifine Headset)"));
+        Assert.False(engine.OnHeadset);
+        Assert.Equal(PcOut, _memory.DesktopPlayback);
     }
 
     [Fact]

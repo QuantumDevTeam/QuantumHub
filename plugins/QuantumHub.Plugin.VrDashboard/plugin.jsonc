@@ -2,7 +2,7 @@
 {
   "id": "qh.vr.dashboard",
   "name": "SteamVR Dashboard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Вкладка в меню SteamVR: звук, мьют в Discord, режим сна и чатбокс прямо в шлеме.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.VrDashboard.dll" },
@@ -17,17 +17,19 @@
     { "key": "showAudio", "type": "bool", "group": "Что показывать", "title": "Звук", "description": "Переключение между гарнитурой и компьютером.", "default": true },
     { "key": "showDiscord", "type": "bool", "group": "Что показывать", "title": "Discord", "description": "Нужна авторизация на странице плагина Discord.", "default": true },
     { "key": "showSleep", "type": "bool", "group": "Что показывать", "title": "Режим сна Pico", "default": true },
-    { "key": "showChatbox", "type": "bool", "group": "Что показывать", "title": "Чатбокс VRChat", "default": true }
+    { "key": "showChatbox", "type": "bool", "group": "Что показывать", "title": "Чатбокс VRChat", "default": true },
+    { "key": "flipPointer", "type": "bool", "group": "Управление", "title": "Считать луч снизу вверх", "description": "Так работает SteamVR. Выключи, только если нажатия срабатывают на кнопках с другой стороны панели.", "default": true }
   ],
   "locales": {
     "en": {
       "description": "A tab in the SteamVR menu: sound, Discord mute, sleep mode and the chatbox right in the headset.",
-      "groups": { "Что показывать": "What to show" },
+      "groups": { "Что показывать": "What to show", "Управление": "Controls" },
       "settings": {
         "showAudio": { "title": "Sound", "description": "Switch between the headset and the desktop." },
         "showDiscord": { "title": "Discord", "description": "Needs authorization on the Discord plugin page." },
         "showSleep": { "title": "Pico sleep mode" },
-        "showChatbox": { "title": "VRChat chatbox" }
+        "showChatbox": { "title": "VRChat chatbox" },
+        "flipPointer": { "title": "Count the pointer from the bottom up", "description": "This is how SteamVR works. Turn off only if presses land on buttons at the other side of the panel." }
       }
     }
   }

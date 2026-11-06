@@ -1,6 +1,6 @@
 # Что за проекты
 
-В решении 24 проекта. Выглядит много, но идея простая: **каждый процесс получает только то, что
+В решении 27 проектов. Выглядит много, но идея простая: **каждый процесс получает только то, что
 ему нужно**. Хабу незачем знать про WinUI, GUI незачем уметь загружать плагины, а внешнему плагину
 незачем тянуть всё ядро.
 
@@ -104,8 +104,9 @@ flowchart TD
 |---|---|---|---|
 | [User Activity](../plugins/QuantumHub.Plugin.Activity/README.md) | Окно в фокусе, процессы, простой, запущен ли VR | `user.activity` | |
 | [System Specs](../plugins/QuantumHub.Plugin.SystemSpecs/README.md) | Характеристики и загрузка компьютера | `system.specs`, `system.stats` | |
-| [Audio Devices](../plugins/QuantumHub.Plugin.AudioDevices/README.md) | Устройства, приложения со звуком, громкость | `audio.devices` | |
-| [Notifications](../plugins/QuantumHub.Plugin.Notifications/README.md) | Всплывающие окошки для всех | `ui.notifications` | |
+| [Audio Devices](../plugins/QuantumHub.Plugin.AudioDevices/README.md) | Устройства, приложения со звуком, громкость, уровни микрофонов | `audio.devices` | |
+| [Mic Switcher](../plugins/QuantumHub.Plugin.MicSwitcher/README.md) | Переключает на микрофон, где появился голос | `audio.micswitch` | `audio.devices`, `ui.notifications`*, `vr.session`* |
+| [Notifications](../plugins/QuantumHub.Plugin.Notifications/README.md) | Всплывающие окошки с кнопками для всех | `ui.notifications` | |
 | [Music](../plugins/QuantumHub.Plugin.Music/README.md) | Трек, уведомления, приглушение | `media.player` | `audio.devices`*, `ui.notifications`* |
 | [VR Switcher](../plugins/QuantumHub.Plugin.VrSwitcher/README.md) | Переводит звук на гарнитуру, пресеты | `vr.session` | `audio.devices`, `user.activity` |
 | [Pico Sleep Mode](../plugins/QuantumHub.Plugin.PicoAntiSleep/README.md) | Не даёт шлему заснуть | `vr.pico.sleep` | `vr.session` |
@@ -128,6 +129,9 @@ flowchart BT
     Pico["Pico Sleep Mode"] --> Switcher
     Music -.-> Audio
     Music -.-> Notify["Notifications"]
+    Mic["Mic Switcher"] --> Audio
+    Mic -.-> Notify
+    Mic -.-> Switcher
 ```
 
 Сплошная стрелка — обязательная зависимость, пунктирная — необязательная.

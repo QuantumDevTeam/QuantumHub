@@ -14,7 +14,23 @@ namespace QuantumHub.Notifier;
 /// <param name="Subtitle">Вторая строка.</param>
 /// <param name="ImageBase64">Картинка в base64.</param>
 /// <param name="Badge">Значок поверх картинки.</param>
-public sealed record NotificationRequest(string? Key, string Title, string? Subtitle, string? ImageBase64, string? Badge);
+/// <param name="Actions">Кнопки.</param>
+public sealed record NotificationRequest(
+    string? Key,
+    string Title,
+    string? Subtitle,
+    string? ImageBase64,
+    string? Badge,
+    IReadOnlyList<NotificationAction>? Actions = null);
+
+/// <summary>Кнопка в окошке.</summary>
+/// <param name="Id">Что уйдёт в плагин при нажатии.</param>
+/// <param name="Label">Надпись.</param>
+public sealed record NotificationAction(string Id, string Label);
+
+/// <summary>Просьба убрать окошко.</summary>
+/// <param name="Key">Его ключ.</param>
+public sealed record NotificationHide(string Key);
 
 /// <summary>Уведомление вместе с настройками внешнего вида.</summary>
 /// <param name="Request">Что показать.</param>
@@ -67,7 +83,9 @@ internal static class Program
             });
 
             client.Disconnected += () => dispatcher.BeginInvoke(() => Application.Current.Shutdown());
+            overlay.ActionClicked += (key, action) => _ = SendActionAsync(client, key, action);
             await client.SubscribeAsync("notify.display", e => Show(e.Payload, overlay, dispatcher));
+            await client.SubscribeAsync("notify.hide", e => Hide(e.Payload, overlay, dispatcher));
 
             var pending = await client.CallAsync("cap:ui.notifications", "notify.pending");
             var age = pending.AsJson<NotificationDisplay>() is { } last
@@ -79,6 +97,23 @@ internal static class Program
         {
             Application.Current.Shutdown();
         }
+    }
+
+    private static async Task SendActionAsync(HubClient client, string key, string action)
+    {
+        try
+        {
+            await client.CallAsync("cap:ui.notifications", "notify.action", HubPayload.Json(new { key, action }));
+        }
+        catch (Exception ex) when (ex is IOException or TimeoutException or HubCallException)
+        {
+            // Хаб ушёл, а вместе с ним и тот, кто ждал нажатия.
+        }
+    }
+
+    private static void Hide(HubPayload payload, NotificationOverlay overlay, Dispatcher dispatcher)
+    {
+        if (payload.AsJson<NotificationHide>() is { } hide) dispatcher.BeginInvoke(() => overlay.Hide(hide.Key));
     }
 
     private static void Show(HubPayload payload, NotificationOverlay overlay, Dispatcher dispatcher)

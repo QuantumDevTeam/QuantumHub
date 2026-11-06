@@ -9,13 +9,61 @@ namespace QuantumHub.Plugin.AudioDevices;
 /// <summary>Настоящие звуковые устройства Windows.</summary>
 public sealed class WasapiAudioDevices
 {
+    /// <summary>Сколько помнить список микрофонов. Уровни спрашивают часто, а устройства меняются редко.</summary>
+    private static readonly TimeSpan MicListLifetime = TimeSpan.FromSeconds(2);
+
+    /// <summary>Шина устройства: USB, HDAUDIO, BTHENUM и так далее.</summary>
+    private static readonly PropertyKey EnumeratorName = new(new Guid("a45c254e-df1c-4efd-8020-67d146a850e0"), 24);
+
+    /// <summary>Путь драйвера вида "{1}.USB\VID_...".</summary>
+    private static readonly PropertyKey DriverPath = new(new Guid("b3f8fa53-0004-438e-9003-51a46e139bfc"), 2);
+
     private readonly ConcurrentDictionary<uint, string> _names = new();
+    private readonly Lock _micGate = new();
+    private IReadOnlyList<MicLevel>? _mics;
+    private long _micsRead;
 
     /// <summary>Все активные устройства.</summary>
     public AudioList List() => new(ListFlow(DataFlow.Render), ListFlow(DataFlow.Capture));
 
     /// <summary>Устройства по умолчанию.</summary>
     public AudioCurrent Current() => new(Default(DataFlow.Render), Default(DataFlow.Capture));
+
+    /// <summary>Активные микрофоны без уровней. Ничего не открывает.</summary>
+    public IReadOnlyList<MicLevel> Mics()
+    {
+        lock (_micGate)
+        {
+            if (_mics is null || Stopwatch.GetElapsedTime(_micsRead) >= MicListLifetime)
+            {
+                _mics = ReadMics();
+                _micsRead = Stopwatch.GetTimestamp();
+            }
+
+            return _mics;
+        }
+    }
+
+    private static List<MicLevel> ReadMics()
+    {
+        var defaultId = Default(DataFlow.Capture)?.Id;
+        using var enumerator = new MMDeviceEnumerator();
+        var mics = new List<MicLevel>();
+        foreach (var endpoint in enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active))
+        {
+            using (endpoint)
+            {
+                var name = endpoint.FriendlyName;
+                var bluetooth = BluetoothMic.Detect(Read(endpoint, EnumeratorName), Read(endpoint, DriverPath), name);
+                mics.Add(new MicLevel(endpoint.ID, name, bluetooth, endpoint.ID == defaultId, 0, false));
+            }
+        }
+
+        return mics;
+    }
+
+    private static string? Read(MMDevice endpoint, PropertyKey key) =>
+        endpoint.Properties.Contains(key) ? endpoint.Properties[key].Value as string : null;
 
     private static List<AudioDevice> ListFlow(DataFlow flow)
     {
@@ -101,6 +149,8 @@ public sealed class WasapiAudioDevices
     /// <param name="deviceId">Id устройства.</param>
     public void SetDefault(string deviceId)
     {
+        lock (_micGate) _mics = null;
+
         // Публичного API для этого в Windows нет. IPolicyConfig недокументирован, но им
         // пользуется сама панель управления, поэтому он стабилен уже много лет.
         var policy = (IPolicyConfig)new PolicyConfigClient();

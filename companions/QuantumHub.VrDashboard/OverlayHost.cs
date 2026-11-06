@@ -1,106 +1,175 @@
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Text;
 using QuantumHub.Contracts.Bus;
 using QuantumHub.Contracts.Ui;
-using Valve.VR;
 
 namespace QuantumHub.VrDashboard;
 
-/// <summary>Вкладка в меню SteamVR: показывает картинку панели и передаёт нажатия лучом контроллера.</summary>
+/// <summary>Что произошло в SteamVR.</summary>
+public enum OverlayInputKind
+{
+    /// <summary>Луч контроллера сдвинулся.</summary>
+    Move,
+    /// <summary>Кнопку контроллера отпустили.</summary>
+    Press,
+    /// <summary>Пользователь закончил ввод на клавиатуре.</summary>
+    KeyboardDone,
+    /// <summary>Клавиатуру закрыли.</summary>
+    KeyboardClosed,
+    /// <summary>SteamVR закрывается.</summary>
+    Quit,
+}
+
+/// <summary>Событие SteamVR.</summary>
+/// <param name="Kind">Что произошло.</param>
+/// <param name="X">Координата X в пикселях панели.</param>
+/// <param name="Y">Координата Y в пикселях панели.</param>
+public readonly record struct OverlayInput(OverlayInputKind Kind, double X = 0, double Y = 0);
+
+/// <summary>Всё, что панели нужно от SteamVR. Отдельно, чтобы логику панели можно было проверить без шлема.</summary>
+public interface IOverlayRuntime
+{
+    /// <summary>Подключается к SteamVR и создаёт вкладку.</summary>
+    /// <param name="icon">Значок вкладки.</param>
+    /// <returns>Текст ошибки или <see langword="null"/>.</returns>
+    string? Start(string icon);
+
+    /// <summary>Отключается от SteamVR.</summary>
+    void Stop();
+
+    /// <summary>Открыта ли вкладка.</summary>
+    bool IsVisible { get; }
+
+    /// <summary>Забирает следующее событие.</summary>
+    /// <param name="input">Событие.</param>
+    /// <returns>Было ли событие.</returns>
+    bool TryPoll(out OverlayInput input);
+
+    /// <summary>Показывает картинку из пикселей RGBA.</summary>
+    /// <param name="rgba">Пиксели.</param>
+    /// <returns>Текст ошибки или <see langword="null"/>.</returns>
+    string? ShowPixels(byte[] rgba);
+
+    /// <summary>Показывает картинку из файла.</summary>
+    /// <param name="path">Путь к PNG.</param>
+    /// <returns>Текст ошибки или <see langword="null"/>.</returns>
+    string? ShowFile(string path);
+
+    /// <summary>Открывает клавиатуру SteamVR.</summary>
+    /// <param name="description">Подпись.</param>
+    /// <param name="text">Начальный текст.</param>
+    /// <returns>Текст ошибки или <see langword="null"/>.</returns>
+    string? OpenKeyboard(string description, string text);
+
+    /// <summary>Что ввёл пользователь.</summary>
+    string KeyboardText();
+}
+
+/// <summary>Рисует панель.</summary>
+public interface IPanelPainter
+{
+    /// <summary>Рисует в пиксели RGBA.</summary>
+    /// <param name="view">Раскладка.</param>
+    /// <param name="state">Данные.</param>
+    byte[] Rgba(PanelView view, PanelState state);
+
+    /// <summary>Рисует в файл PNG.</summary>
+    /// <param name="view">Раскладка.</param>
+    /// <param name="state">Данные.</param>
+    /// <param name="path">Куда.</param>
+    void Png(PanelView view, PanelState state, string path);
+}
+
+/// <summary>Логика вкладки в меню SteamVR: что показать и что сделать по нажатию.</summary>
+/// <param name="runtime">SteamVR.</param>
+/// <param name="painter">Рисование.</param>
 /// <param name="client">Связь с плагинами.</param>
 /// <param name="log">Журнал.</param>
-public sealed class OverlayHost(PanelClient client, Action<string> log)
+public sealed class OverlayHost(IOverlayRuntime runtime, IPanelPainter painter, PanelClient client, Action<string> log)
 {
-    private const string OverlayKey = "quantumdevteam.quantumhub.dashboard";
-    private const float WidthInMeters = 2.2f;
-    private const int MaxInputLength = 144;
+    private const string IconFile = "logo.png";
     /// <summary>Шаг цикла: в нём читаются нажатия.</summary>
-    private static readonly TimeSpan Step = TimeSpan.FromMilliseconds(20);
+    private static readonly TimeSpan StepDelay = TimeSpan.FromMilliseconds(20);
     /// <summary>Как часто обновлять данные, пока панель открыта.</summary>
     private static readonly TimeSpan RefreshEvery = TimeSpan.FromSeconds(1.5);
 
-    private ulong _overlay;
+    private readonly Lock _gate = new();
     private PanelOptions _options = new();
     private PanelState _state = new();
     private PanelView _view = new([], null);
-    private string? _hovered;
     private bool _dirty = true;
-    /// <summary>Для чего сейчас открыта клавиатура SteamVR.</summary>
+    /// <summary>Что сейчас показано. Замена картинки в SteamVR заметна глазу, поэтому такая же картинка не отправляется.</summary>
+    private byte[]? _shown;
+    /// <summary>SteamVR отказался принимать пиксели, и картинка идёт через файл.</summary>
+    private bool _useFile;
+    /// <summary>Файлов два: SteamVR читает файл с задержкой и не должен застать его наполовину записанным.</summary>
+    private int _fileIndex;
+    /// <summary>Для чего сейчас открыта клавиатура.</summary>
     private string? _keyboardFor;
     private int _refreshing;
+    private DateTime _nextRefresh = DateTime.MinValue;
 
     /// <summary>Подключается к SteamVR и работает, пока тот не закроется.</summary>
     /// <returns>0 при обычном завершении.</returns>
     public int Run()
     {
-        var error = EVRInitError.None;
-        Valve.VR.OpenVR.Init(ref error, EVRApplicationType.VRApplication_Overlay, string.Empty);
-        if (error != EVRInitError.None)
+        if (runtime.Start(Path.Combine(AppContext.BaseDirectory, IconFile)) is { } error)
         {
-            log($"SteamVR is unavailable: {error}");
+            log(error);
             return 1;
         }
 
+        log("Panel is in the SteamVR menu.");
         try
         {
-            return CreateOverlay() ? Loop() : 1;
+            // Данные нужны сразу: иначе при первом открытии вкладка будет пустой.
+            RefreshAsync().GetAwaiter().GetResult();
+            while (Step()) Thread.Sleep(StepDelay);
+            return 0;
         }
         finally
         {
-            Valve.VR.OpenVR.Shutdown();
+            runtime.Stop();
         }
     }
 
-    /// <summary>Создаёт вкладку.</summary>
-    private bool CreateOverlay()
+    /// <summary>Один шаг цикла.</summary>
+    /// <returns><see langword="false"/>, если SteamVR закрывается.</returns>
+    public bool Step()
     {
-        ulong thumbnail = 0;
-        var result = Valve.VR.OpenVR.Overlay.CreateDashboardOverlay(OverlayKey, "QuantumHub", ref _overlay, ref thumbnail);
-        if (result != EVROverlayError.None)
+        while (runtime.TryPoll(out var input))
         {
-            log($"Could not create the overlay: {result}");
-            return false;
+            if (input.Kind == OverlayInputKind.Quit) return false;
+            Handle(input);
         }
 
-        var icon = Path.Combine(AppContext.BaseDirectory, "logo.png");
-        if (File.Exists(icon)) Valve.VR.OpenVR.Overlay.SetOverlayFromFile(thumbnail, icon);
+        if (runtime.IsVisible && DateTime.UtcNow >= _nextRefresh)
+        {
+            _nextRefresh = DateTime.UtcNow + RefreshEvery;
+            RefreshInBackground();
+        }
 
-        Valve.VR.OpenVR.Overlay.SetOverlayWidthInMeters(_overlay, WidthInMeters);
-        Valve.VR.OpenVR.Overlay.SetOverlayInputMethod(_overlay, VROverlayInputMethod.Mouse);
-        var scale = new HmdVector2_t { v0 = PanelLayout.Width, v1 = PanelLayout.Height };
-        Valve.VR.OpenVR.Overlay.SetOverlayMouseScale(_overlay, ref scale);
+        if (Volatile.Read(ref _dirty)) Present();
         return true;
     }
 
-    /// <summary>Главный цикл.</summary>
-    private int Loop()
+    /// <summary>Читает данные плагинов.</summary>
+    public async Task RefreshAsync()
     {
-        var size = (uint)Marshal.SizeOf<VREvent_t>();
-        var next = DateTime.MinValue;
-        while (true)
+        var options = await client.ReadOptionsAsync();
+        var state = await client.ReadAsync(options);
+        lock (_gate)
         {
-            var vrEvent = new VREvent_t();
-            while (Valve.VR.OpenVR.System.PollNextEvent(ref vrEvent, size))
-            {
-                if (vrEvent.eventType != (uint)EVREventType.VREvent_Quit) continue;
-                Valve.VR.OpenVR.System.AcknowledgeQuit_Exiting();
-                return 0;
-            }
-
-            while (Valve.VR.OpenVR.Overlay.PollNextOverlayEvent(_overlay, ref vrEvent, size)) Handle(vrEvent);
-
-            var visible = Valve.VR.OpenVR.Overlay.IsOverlayVisible(_overlay);
-            if (visible && DateTime.UtcNow >= next)
-            {
-                next = DateTime.UtcNow + RefreshEvery;
-                RefreshInBackground();
-            }
-
-            if (_dirty) Present();
-            Thread.Sleep(Step);
+            if (Same(state, _state) && options == _options) return;
+            _options = options;
+            _state = state;
         }
+
+        Volatile.Write(ref _dirty, true);
     }
+
+    /// <summary>Одинаковы ли данные. Список статусов записи сравнивают по ссылке, поэтому он сравнивается отдельно.</summary>
+    private static bool Same(PanelState a, PanelState b) =>
+        (a with { Statuses = null }) == (b with { Statuses = null }) && (a.Statuses ?? []).SequenceEqual(b.Statuses ?? []);
 
     /// <summary>Обновляет данные, не задерживая цикл: иначе панель перестанет отзываться на контроллер.</summary>
     private void RefreshInBackground()
@@ -110,14 +179,9 @@ public sealed class OverlayHost(PanelClient client, Action<string> log)
         {
             try
             {
-                var options = await client.ReadOptionsAsync();
-                var state = await client.ReadAsync(options);
-                if (state.Equals(Volatile.Read(ref _state)) && options == _options) return;
-                _options = options;
-                Volatile.Write(ref _state, state);
-                _dirty = true;
+                await RefreshAsync();
             }
-            catch (Exception ex) when (ex is IOException or HubCallException or InvalidOperationException)
+            catch (Exception ex) when (ex is IOException or HubCallException or InvalidOperationException or OperationCanceledException)
             {
                 log($"Refresh failed: {ex.Message}");
             }
@@ -131,55 +195,69 @@ public sealed class OverlayHost(PanelClient client, Action<string> log)
     /// <summary>Отдаёт картинку в SteamVR.</summary>
     private void Present()
     {
-        _dirty = false;
-        var state = Volatile.Read(ref _state);
-        _view = PanelLayout.Build(state, _options);
+        Volatile.Write(ref _dirty, false);
 
-        var pixels = PanelRenderer.RenderRgba(_view, state, _hovered);
-        var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
-        try
+        PanelState state;
+        PanelOptions options;
+        lock (_gate)
         {
-            Valve.VR.OpenVR.Overlay.SetOverlayRaw(_overlay, handle.AddrOfPinnedObject(), PanelLayout.Width, PanelLayout.Height, 4);
+            state = _state;
+            options = _options;
         }
-        finally
+
+        _view = PanelLayout.Build(state, options);
+
+        var pixels = painter.Rgba(_view, state);
+        if (_shown is not null && pixels.AsSpan().SequenceEqual(_shown)) return;
+        _shown = pixels;
+
+        if (!_useFile)
         {
-            handle.Free();
+            var error = runtime.ShowPixels(pixels);
+            if (error is null) return;
+
+            // Размер данных для этого вызова ограничен, а файл принимается всегда.
+            log($"SetOverlayRaw failed: {error}. Falling back to a file.");
+            _useFile = true;
         }
+
+        _fileIndex ^= 1;
+        var path = Path.Combine(Path.GetTempPath(), $"QuantumHub.VrDashboard.{Environment.ProcessId}.{_fileIndex}.png");
+        painter.Png(_view, state, path);
+        if (runtime.ShowFile(path) is { } fileError) log($"SetOverlayFromFile failed: {fileError}");
     }
 
     /// <summary>Разбирает событие панели.</summary>
-    private void Handle(VREvent_t vrEvent)
+    private void Handle(OverlayInput input)
     {
-        switch ((EVREventType)vrEvent.eventType)
+        switch (input.Kind)
         {
-            case EVREventType.VREvent_MouseMove:
-                var hovered = TileAt(vrEvent.data.mouse)?.Id;
-                if (hovered == _hovered) break;
-                _hovered = hovered;
-                _dirty = true;
+            case OverlayInputKind.Press:
+                var tile = TileAt(input);
+                log($"Press at {input.X:0},{input.Y:0}: {tile?.Id ?? "nothing"}");
+                if (tile is not null) Press(tile);
                 break;
 
-            case EVREventType.VREvent_MouseButtonUp:
-                if (TileAt(vrEvent.data.mouse) is { } tile) Press(tile);
-                break;
-
-            case EVREventType.VREvent_KeyboardDone:
+            case OverlayInputKind.KeyboardDone:
                 OnKeyboardDone();
                 break;
 
-            case EVREventType.VREvent_KeyboardClosed:
+            case OverlayInputKind.KeyboardClosed:
                 _keyboardFor = null;
                 break;
         }
     }
 
-    /// <summary>Кнопка под лучом. У SteamVR начало координат внизу слева, а у панели вверху.</summary>
-    private PanelTile? TileAt(VREvent_Mouse_t mouse) => PanelLayout.HitTest(_view, mouse.x, PanelLayout.Height - mouse.y);
+    /// <summary>Кнопка под лучом. SteamVR считает координаты от нижнего края панели, а раскладка от верхнего.</summary>
+    private PanelTile? TileAt(OverlayInput input) =>
+        PanelLayout.HitTest(_view, input.X, _options.FlipPointer ? PanelLayout.Height - input.Y : input.Y);
 
     /// <summary>Нажатие на кнопку.</summary>
     private void Press(PanelTile tile)
     {
-        var state = Volatile.Read(ref _state);
+        PanelState state;
+        lock (_gate) state = _state;
+
         if (tile.Id == PanelLayout.EditStatus)
         {
             OpenKeyboard(tile.Id, Loc.T("Личный статус", "Personal status"), state.Status);
@@ -198,18 +276,14 @@ public sealed class OverlayHost(PanelClient client, Action<string> log)
     /// <summary>Открывает клавиатуру SteamVR.</summary>
     private void OpenKeyboard(string purpose, string description, string text)
     {
-        var result = Valve.VR.OpenVR.Overlay.ShowKeyboardForOverlay(_overlay, (int)EGamepadTextInputMode.k_EGamepadTextInputModeNormal,
-            (int)EGamepadTextInputLineMode.k_EGamepadTextInputLineModeSingleLine, 0, description, MaxInputLength, text, 0);
-        if (result == EVROverlayError.None) _keyboardFor = purpose;
-        else log($"Could not open the keyboard: {result}");
+        if (runtime.OpenKeyboard(description, text) is { } error) log($"Could not open the keyboard: {error}");
+        else _keyboardFor = purpose;
     }
 
     /// <summary>Пользователь закончил ввод.</summary>
     private void OnKeyboardDone()
     {
-        var buffer = new StringBuilder(MaxInputLength * 4);
-        Valve.VR.OpenVR.Overlay.GetKeyboardText(buffer, (uint)buffer.Capacity);
-        var text = buffer.ToString();
+        var text = runtime.KeyboardText();
         var purpose = _keyboardFor;
         _keyboardFor = null;
 
@@ -224,7 +298,7 @@ public sealed class OverlayHost(PanelClient client, Action<string> log)
         {
             await action();
         }
-        catch (Exception ex) when (ex is IOException or HubCallException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or HubCallException or InvalidOperationException or OperationCanceledException)
         {
             log($"Action failed: {ex.Message}");
         }

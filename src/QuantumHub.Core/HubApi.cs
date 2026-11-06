@@ -279,7 +279,7 @@ public sealed class HubApi(Hub hub) : IEndpoint
         {
             "bool" => JsonValue.Create(bool.TryParse(value, out var flag) && flag),
             "number" => JsonValue.Create(double.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var number) ? number : 0),
-            "list" => new JsonArray(value.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            "list" => new JsonArray(value.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(line => (JsonNode?)JsonValue.Create(line)).ToArray()),
             _ => JsonValue.Create(value),
         };
