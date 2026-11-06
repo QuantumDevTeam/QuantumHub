@@ -2,7 +2,7 @@
 {
   "id": "qh.ui.notify",
   "name": "Notifications",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Небольшие всплывающие окошки поверх экрана. Ими может пользоваться любой плагин.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.Notifications.dll" },

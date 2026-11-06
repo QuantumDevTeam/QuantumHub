@@ -2,7 +2,7 @@
 {
   "id": "qh.activity",
   "name": "User Activity",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Знает, какое окно в фокусе, какие программы запущены и занят ли пользователь. Даёт это другим плагинам.",
   "author": "QuantumDevTeam",
   // Миниатюра лежит внутри DLL.

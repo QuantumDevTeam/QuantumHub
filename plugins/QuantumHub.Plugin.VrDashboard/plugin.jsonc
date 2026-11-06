@@ -2,7 +2,7 @@
 {
   "id": "qh.vr.dashboard",
   "name": "SteamVR Dashboard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Вкладка в меню SteamVR: звук, мьют в Discord, режим сна и чатбокс прямо в шлеме.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.VrDashboard.dll" },
@@ -18,7 +18,7 @@
     { "key": "showDiscord", "type": "bool", "group": "Что показывать", "title": "Discord", "description": "Нужна авторизация на странице плагина Discord.", "default": true },
     { "key": "showSleep", "type": "bool", "group": "Что показывать", "title": "Режим сна Pico", "default": true },
     { "key": "showChatbox", "type": "bool", "group": "Что показывать", "title": "Чатбокс VRChat", "default": true },
-    { "key": "flipPointer", "type": "bool", "group": "Управление", "title": "Перевернуть луч по вертикали", "description": "Включи, если нажатия срабатывают на кнопках с другой стороны панели.", "default": false }
+    { "key": "flipPointer", "type": "bool", "group": "Управление", "title": "Считать луч снизу вверх", "description": "Так работает SteamVR. Выключи, только если нажатия срабатывают на кнопках с другой стороны панели.", "default": true }
   ],
   "locales": {
     "en": {
@@ -29,7 +29,7 @@
         "showDiscord": { "title": "Discord", "description": "Needs authorization on the Discord plugin page." },
         "showSleep": { "title": "Pico sleep mode" },
         "showChatbox": { "title": "VRChat chatbox" },
-        "flipPointer": { "title": "Flip the pointer vertically", "description": "Turn on if presses land on buttons at the other side of the panel." }
+        "flipPointer": { "title": "Count the pointer from the bottom up", "description": "This is how SteamVR works. Turn off only if presses land on buttons at the other side of the panel." }
       }
     }
   }
