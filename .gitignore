@@ -1,10 +1,40 @@
-bin/
-obj/
+# Сборка
+[Bb]in/
+[Oo]bj/
 artifacts/
-.vs/
-*.user
-*.suo
-.idea/
 TestResults/
 docs/api/
+docs/_site/
+
+# Готовые программы и пакеты: они выходят через GitHub Releases
+*.exe
+*.dll
+*.pdb
+*.qhp
+*.nupkg
+*.zip
+
+# Среды разработки
+.vs/
+.vscode/
+.idea/
 .claude/
+*.user
+*.suo
+
+# Журналы и временные файлы
+*.log
+*.tmp
+__pycache__/
+*.pyc
+
+# Секреты
+.env
+.env.*
+*.pfx
+*.snk
+
+# Служебные файлы систем
+Thumbs.db
+desktop.ini
+.DS_Store
