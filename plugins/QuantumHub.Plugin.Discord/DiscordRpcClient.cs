@@ -87,6 +87,19 @@ public sealed class DiscordRpcClient(Stream stream) : IAsyncDisposable
         }
     }
 
+    /// <summary>Отвечает на Ping. Если соединение уже закрылось, об этом сообщит цикл чтения.</summary>
+    private async Task PongAsync(JsonNode? payload)
+    {
+        try
+        {
+            await WriteAsync(DiscordOpcode.Pong, payload ?? new JsonObject(), _lifetime.Token);
+        }
+        catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException)
+        {
+            // Соединения больше нет.
+        }
+    }
+
     private async Task ReadLoopAsync()
     {
         Exception? failure = null;
@@ -101,7 +114,8 @@ public sealed class DiscordRpcClient(Stream stream) : IAsyncDisposable
                         OnFrame(payload as JsonObject);
                         break;
                     case DiscordOpcode.Ping:
-                        await WriteAsync(DiscordOpcode.Pong, payload ?? new JsonObject(), _lifetime.Token);
+                        // Не ждём записи здесь: пока цикл стоит, никто не читает, и две стороны могут ждать друг друга вечно.
+                        _ = PongAsync(payload);
                         break;
                     case DiscordOpcode.Close:
                         failure = new DiscordRpcException(Code(payload), payload?["message"]?.GetValue<string>() ?? Loc.T("Discord закрыл соединение.", "Discord closed the connection."));
