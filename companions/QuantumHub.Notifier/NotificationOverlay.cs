@@ -2,6 +2,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -19,6 +20,16 @@ public sealed class NotificationOverlay
     private readonly Dictionary<string, NotificationWindow> _keyed = new();
     private readonly List<NotificationWindow> _open = [];
 
+    /// <summary>Нажата кнопка: ключ окошка и id кнопки.</summary>
+    public event Action<string, string>? ActionClicked;
+
+    /// <summary>Убирает окошко, если оно ещё открыто.</summary>
+    /// <param name="key">Ключ окошка.</param>
+    public void Hide(string key)
+    {
+        if (_keyed.TryGetValue(key, out var window)) window.Dismiss();
+    }
+
     /// <summary>Показывает уведомление или обновляет окошко с тем же ключом.</summary>
     /// <param name="display">Что показать.</param>
     public void Show(NotificationDisplay display)
@@ -28,6 +39,7 @@ public sealed class NotificationOverlay
         {
             window = new NotificationWindow();
             var created = window;
+            window.ActionClicked += action => ActionClicked?.Invoke(key ?? string.Empty, action);
             window.Closed += (_, _) =>
             {
                 _open.Remove(created);
@@ -56,7 +68,7 @@ public sealed class NotificationOverlay
     }
 }
 
-/// <summary>Одно окошко: не забирает фокус, не мешает щелчкам и плавно исчезает само.</summary>
+/// <summary>Одно окошко: не забирает фокус и плавно исчезает само. Щелчки пропускает, если в нём нет кнопок.</summary>
 public sealed class NotificationWindow : Window
 {
     private const int ExStyle = -20;
@@ -87,7 +99,16 @@ public sealed class NotificationWindow : Window
         TextTrimming = TextTrimming.CharacterEllipsis,
         MaxWidth = 280,
     };
+    private readonly StackPanel _actions = new()
+    {
+        Orientation = Orientation.Horizontal,
+        Margin = new Thickness(0, 10, 0, 0),
+        Visibility = Visibility.Collapsed,
+    };
     private readonly DispatcherTimer _hide = new();
+
+    /// <summary>Нажата кнопка. Передаётся её id.</summary>
+    public event Action<string>? ActionClicked;
 
     /// <summary>Создаёт окошко. Показано оно будет при первом обновлении.</summary>
     public NotificationWindow()
@@ -127,6 +148,7 @@ public sealed class NotificationWindow : Window
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         text.Children.Add(_title);
         text.Children.Add(_subtitle);
+        text.Children.Add(_actions);
 
         var row = new StackPanel { Orientation = Orientation.Horizontal };
         row.Children.Add(_picture);
@@ -146,11 +168,49 @@ public sealed class NotificationWindow : Window
         };
 
         _hide.Tick += (_, _) => Hide(true);
-        SourceInitialized += (_, _) =>
+        SourceInitialized += (_, _) => ApplyStyle();
+    }
+
+    /// <summary>Щелчки сквозь окошко мешают только кнопкам, поэтому только с ними окошко их ловит. Фокус не забирает всё равно.</summary>
+    private void ApplyStyle()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == 0) return;
+
+        var style = GetWindowLong(handle, ExStyle) | ToolWindow | NoActivate;
+        SetWindowLong(handle, ExStyle, _actions.Children.Count > 0 ? style & ~Transparent : style | Transparent);
+    }
+
+    private void ShowActions(IReadOnlyList<NotificationAction>? actions)
+    {
+        _actions.Children.Clear();
+        foreach (var action in actions ?? []) _actions.Children.Add(ActionButton(action));
+        _actions.Visibility = _actions.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ApplyStyle();
+    }
+
+    /// <summary>Обычный Button забрал бы фокус и выглядел бы чужим, а здесь нужен только щелчок.</summary>
+    private Border ActionButton(NotificationAction action)
+    {
+        var normal = new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x55));
+        var hover = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x77));
+        var button = new Border
         {
-            var handle = new WindowInteropHelper(this).Handle;
-            SetWindowLong(handle, ExStyle, GetWindowLong(handle, ExStyle) | Transparent | ToolWindow | NoActivate);
+            Background = normal,
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(10, 4, 10, 4),
+            Margin = new Thickness(0, 0, 6, 0),
+            Cursor = Cursors.Hand,
+            Child = new TextBlock { Text = action.Label, Foreground = Brushes.White, FontSize = 12.5 },
         };
+        button.MouseEnter += (_, _) => button.Background = hover;
+        button.MouseLeave += (_, _) => button.Background = normal;
+        button.MouseLeftButtonUp += (_, _) =>
+        {
+            ActionClicked?.Invoke(action.Id);
+            Dismiss();
+        };
+        return button;
     }
 
     /// <summary>Обновляет содержимое и заново заводит таймер скрытия.</summary>
@@ -166,6 +226,7 @@ public sealed class NotificationWindow : Window
         _image.Source = image;
         _picture.Visibility = image is null ? Visibility.Collapsed : Visibility.Visible;
         _badge.Visibility = request.Badge == "pause" ? Visibility.Visible : Visibility.Collapsed;
+        ShowActions(request.Actions);
 
         if (!IsVisible) Show();
         BeginAnimation(OpacityProperty, new DoubleAnimation(display.Opacity, FadeIn) { EasingFunction = new CubicEase() });
@@ -174,6 +235,9 @@ public sealed class NotificationWindow : Window
         _hide.Interval = TimeSpan.FromMilliseconds(display.DurationMs);
         _hide.Start();
     }
+
+    /// <summary>Плавно закрывает окошко раньше срока.</summary>
+    public void Dismiss() => Hide(true);
 
     private void Hide(bool animate)
     {
