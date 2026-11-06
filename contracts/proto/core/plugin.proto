@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package quantum.hub.contracts.proto.plugin;
+
+message PluginManifest {
+  string plugin_id = 1;
+  string version = 2;
+  repeated string subscribes_to_actions = 3;
+  repeated string provides_actions = 4;
+}

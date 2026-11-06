@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "track.proto";
+
+package quantum.hub.contracts.proto.music;
+
+enum EventType {
+  PLAY = 0;
+  PAUSE = 1;
+  SKIP = 2;
+}
+
+message PlaybackEvent {
+  EventType type = 1;
+  TrackInfo track = 2;
+}

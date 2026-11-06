@@ -1,0 +1,55 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "contracts", "contracts", "{BE3A4AEE-29ED-4ACE-9F7D-E9315942FD86}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumHub.ProtoMemProtocol", "src\QuantumHub.ProtoMemProtocol\QuantumHub.ProtoMemProtocol.csproj", "{AEAAFC2B-0BA1-490D-A5C3-8AA15F09FA1F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "proto", "proto", "{FFC40BBA-3640-41BD-9CEE-A39E88860CD8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumHub.Contracts", "src\QuantumHub.Contracts\QuantumHub.Contracts.csproj", "{1BB30DF7-FE34-46FC-B6D0-A7B17514CBC5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{7FA559F7-65FA-4850-A9F9-23D0DE307128}"
+	ProjectSection(SolutionItems) = preProject
+		contracts\proto\core\core.proto = contracts\proto\core\core.proto
+		contracts\proto\core\plugin.proto = contracts\proto\core\plugin.proto
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "music", "music", "{DB9C569D-8213-4F40-93A0-D46ABA5256D4}"
+	ProjectSection(SolutionItems) = preProject
+		contracts\proto\music\playback.proto = contracts\proto\music\playback.proto
+		contracts\proto\music\track.proto = contracts\proto\music\track.proto
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumHub.IpcTest.Host", "QuantumHub.IpcTest.Host\QuantumHub.IpcTest.Host.csproj", "{DF253727-F73E-4991-B8F6-0C9ECECCFDFA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumHub.IpcTest.Client", "QuantumHub.IpcTest.Client\QuantumHub.IpcTest.Client.csproj", "{C2FDD347-D629-4B48-BF3B-78F564494E7F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AEAAFC2B-0BA1-490D-A5C3-8AA15F09FA1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AEAAFC2B-0BA1-490D-A5C3-8AA15F09FA1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AEAAFC2B-0BA1-490D-A5C3-8AA15F09FA1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AEAAFC2B-0BA1-490D-A5C3-8AA15F09FA1F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1BB30DF7-FE34-46FC-B6D0-A7B17514CBC5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1BB30DF7-FE34-46FC-B6D0-A7B17514CBC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1BB30DF7-FE34-46FC-B6D0-A7B17514CBC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1BB30DF7-FE34-46FC-B6D0-A7B17514CBC5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF253727-F73E-4991-B8F6-0C9ECECCFDFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF253727-F73E-4991-B8F6-0C9ECECCFDFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF253727-F73E-4991-B8F6-0C9ECECCFDFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF253727-F73E-4991-B8F6-0C9ECECCFDFA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C2FDD347-D629-4B48-BF3B-78F564494E7F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C2FDD347-D629-4B48-BF3B-78F564494E7F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C2FDD347-D629-4B48-BF3B-78F564494E7F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C2FDD347-D629-4B48-BF3B-78F564494E7F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{FFC40BBA-3640-41BD-9CEE-A39E88860CD8} = {BE3A4AEE-29ED-4ACE-9F7D-E9315942FD86}
+		{7FA559F7-65FA-4850-A9F9-23D0DE307128} = {FFC40BBA-3640-41BD-9CEE-A39E88860CD8}
+		{DB9C569D-8213-4F40-93A0-D46ABA5256D4} = {FFC40BBA-3640-41BD-9CEE-A39E88860CD8}
+	EndGlobalSection
+EndGlobal
