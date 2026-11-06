@@ -18,6 +18,9 @@ public sealed class TestHub : IAsyncDisposable
     /// <summary>Id плагина Audio Devices.</summary>
     public const string Audio = "qh.audio";
 
+    /// <summary>Id плагина Mic Switcher.</summary>
+    public const string MicSwitcher = "qh.audio.micswitch";
+
     /// <summary>Id плагина VR Switcher.</summary>
     public const string VrSwitcher = "qh.vr.switcher";
 
@@ -48,6 +51,7 @@ public sealed class TestHub : IAsyncDisposable
         [Specs] = "QuantumHub.Plugin.SystemSpecs",
         [Window] = "QuantumHub.Plugin.Activity",
         [Audio] = "QuantumHub.Plugin.AudioDevices",
+        [MicSwitcher] = "QuantumHub.Plugin.MicSwitcher",
         [VrSwitcher] = "QuantumHub.Plugin.VrSwitcher",
         [AntiSleep] = "QuantumHub.Plugin.PicoAntiSleep",
         [Notify] = "QuantumHub.Plugin.Notifications",

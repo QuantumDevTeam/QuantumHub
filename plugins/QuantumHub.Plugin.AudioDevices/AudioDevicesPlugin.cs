@@ -20,6 +20,7 @@ public sealed class AudioDevicesPlugin : IHubPlugin, IUiProvider
     private readonly WasapiAudioDevices _audio = new();
     private readonly Lock _gate = new();
     private IPluginContext _context = null!;
+    private MicMeterPool _meters = null!;
     private AudioCurrent? _last;
     private CancellationTokenSource? _stop;
     private Task? _loop;
@@ -28,6 +29,7 @@ public sealed class AudioDevicesPlugin : IHubPlugin, IUiProvider
     public Task StartAsync(IPluginContext context, CancellationToken token)
     {
         _context = context;
+        _meters = new MicMeterPool(id => new WasapiMicMeter(id), TimeProvider.System, context.Logger.Warning);
         context.Bus.Handle("devices.list", (_, _) => ValueTask.FromResult(HubPayload.Json(_audio.List())));
         context.Bus.Handle("devices.current", (_, _) => ValueTask.FromResult(HubPayload.Json(_audio.Current())));
         context.Bus.Handle("devices.set", (request, _) =>
@@ -50,6 +52,12 @@ public sealed class AudioDevicesPlugin : IHubPlugin, IUiProvider
             return HubPayload.Empty;
         });
 
+        context.Bus.Handle("mics.levels", (request, _) =>
+        {
+            var ids = request.Payload.IsEmpty ? null : request.Payload.AsJson<MicLevelsRequest>()?.Ids;
+            return ValueTask.FromResult(HubPayload.Json(MicLevels(ids ?? [])));
+        });
+
         CheckForChange();
         _stop = new CancellationTokenSource();
         _loop = Task.Run(() => WatchAsync(_stop.Token), CancellationToken.None);
@@ -61,6 +69,15 @@ public sealed class AudioDevicesPlugin : IHubPlugin, IUiProvider
     {
         if (_stop is not null) await _stop.CancelAsync();
         if (_loop is not null) await _loop;
+        _meters.Dispose();
+    }
+
+    /// <summary>Спрашивает только про то, что правда есть: мусорный id не должен превращаться в попытки открыть устройство.</summary>
+    private List<MicLevel> MicLevels(IReadOnlyList<string> ids)
+    {
+        var mics = _audio.Mics();
+        var peaks = _meters.Read(mics.Select(mic => mic.Id).Where(ids.Contains));
+        return mics.Select(mic => peaks.TryGetValue(mic.Id, out var peak) ? mic with { Peak = peak, Listening = true } : mic).ToList();
     }
 
     private async Task FadeAsync(SetSessionVolumeRequest change, CancellationToken token)
@@ -84,6 +101,7 @@ public sealed class AudioDevicesPlugin : IHubPlugin, IUiProvider
                 await Task.Delay(TimeSpan.FromSeconds(_context.Config.Get("checkSeconds", 2d)), token);
                 try
                 {
+                    _meters.Expire();
                     CheckForChange();
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)

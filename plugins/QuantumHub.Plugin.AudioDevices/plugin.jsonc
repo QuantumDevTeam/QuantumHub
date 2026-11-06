@@ -6,7 +6,7 @@
   "description": "Показывает, какие наушники и микрофон сейчас используются, и даёт плагинам и внешним программам их менять.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.AudioDevices.dll" },
-  "provides": [ { "name": "audio.devices", "version": "1.0.0" } ],
+  "provides": [ { "name": "audio.devices", "version": "1.1.0" } ],
   "settings": [
     {
       "key": "checkSeconds",

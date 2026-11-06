@@ -1,0 +1,163 @@
+// Переключает микрофон на тот, где появился голос. Уровни и смену устройства берёт у audio.devices, сам со звуком не работает.
+{
+  "id": "qh.audio.micswitch",
+  "name": "Mic Switcher",
+  "version": "1.0.0",
+  "description": "Замечает, что ты заговорил в другой микрофон, и переключает на него сам или в один щелчок.",
+  "author": "QuantumDevTeam",
+  "service": { "assembly": "QuantumHub.Plugin.MicSwitcher.dll" },
+  "provides": [ { "name": "audio.micswitch", "version": "1.0.0" } ],
+  "dependencies": [
+    { "capability": "audio.devices", "version": ">=1.1.0" },
+    { "capability": "ui.notifications", "version": ">=1.1.0", "optional": true },
+    { "capability": "vr.session", "version": ">=1.0.0", "optional": true }
+  ],
+  "settings": [
+    {
+      "key": "mode",
+      "group": "Режим",
+      "type": "choice",
+      "title": "Что делать с сигналом",
+      "description": "Пока режим включён, плагин держит микрофоны занятыми, и Windows показывает значок использования микрофона.",
+      "options": [ "off", "hint", "auto" ],
+      "optionLabels": { "off": "Выключено", "hint": "Только подсказка", "auto": "Переключать автоматически" },
+      "default": "off"
+    },
+    {
+      "key": "hintSeconds",
+      "group": "Режим",
+      "type": "number",
+      "title": "Показывать подсказку, секунд",
+      "default": 12,
+      "min": 3,
+      "max": 60
+    },
+    {
+      "key": "thresholdPercent",
+      "group": "Сигнал",
+      "type": "number",
+      "title": "Порог, %",
+      "description": "Уровень, с которого сигнал считается голосом. Подбери по шкале на странице плагина.",
+      "default": 10,
+      "min": 1,
+      "max": 100
+    },
+    {
+      "key": "holdMs",
+      "group": "Сигнал",
+      "type": "number",
+      "title": "Сигнал должен держаться, мс",
+      "description": "Щелчки и стук по столу столько не живут.",
+      "default": 1200,
+      "min": 200,
+      "max": 5000
+    },
+    {
+      "key": "requireCurrentSilent",
+      "group": "Сигнал",
+      "type": "bool",
+      "title": "Только если на текущем микрофоне тихо",
+      "description": "Иначе микрофоны, которые стоят рядом и слышат одно и то же, будут спорить.",
+      "default": true
+    },
+    {
+      "key": "cooldownSeconds",
+      "group": "Сигнал",
+      "type": "number",
+      "title": "Не вмешиваться после смены микрофона, секунд",
+      "description": "Кто бы его ни сменил: плагин, ты или другая программа.",
+      "default": 20,
+      "min": 0,
+      "max": 300
+    },
+    {
+      "key": "whitelist",
+      "group": "Микрофоны",
+      "type": "list",
+      "title": "Белый список",
+      "description": "По одному на строку, подходит часть имени. Если не пусто, переключать можно только на эти.",
+      "default": []
+    },
+    {
+      "key": "blacklist",
+      "group": "Микрофоны",
+      "type": "list",
+      "title": "Чёрный список",
+      "description": "По одному на строку, подходит часть имени. Эти не слушаются совсем. Виртуальные устройства лучше оставить здесь: сигнал на них не значит, что ты говоришь.",
+      "default": [ "Stereo Mix", "Стерео микшер", "CABLE Output", "VoiceMeeter", "PicoStreaming", "Oculus Virtual", "Meta Virtual" ]
+    },
+    {
+      "key": "watchBluetooth",
+      "group": "Микрофоны",
+      "type": "bool",
+      "title": "Слушать Bluetooth-микрофоны",
+      "description": "Осторожно: открытый микрофон переводит Bluetooth-гарнитуру в режим HFP, и звук в ней становится телефонным, пока плагин её слушает. Гарнитур с радио-донглом это не касается.",
+      "default": false
+    },
+    {
+      "key": "pollMs",
+      "group": "Проверка",
+      "type": "number",
+      "title": "Проверять уровень раз в, мс",
+      "default": 250,
+      "min": 100,
+      "max": 2000
+    }
+  ],
+  "locales": {
+    "en": {
+      "description": "Notices that you started talking into another microphone and switches to it, by itself or in one click.",
+      "groups": {
+        "Режим": "Mode",
+        "Сигнал": "Signal",
+        "Микрофоны": "Microphones",
+        "Проверка": "Checking"
+      },
+      "settings": {
+        "mode": {
+          "title": "What to do with a signal",
+          "description": "While a mode is on, the plugin keeps microphones in use and Windows shows the microphone icon.",
+          "options": {
+            "off": "Off",
+            "hint": "Hint only",
+            "auto": "Switch automatically"
+          }
+        },
+        "hintSeconds": {
+          "title": "Show the hint for, seconds"
+        },
+        "thresholdPercent": {
+          "title": "Threshold, %",
+          "description": "The level from which a signal counts as a voice. Tune it with the scale on the plugin page."
+        },
+        "holdMs": {
+          "title": "The signal must last, ms",
+          "description": "Clicks and knocks on the desk do not last this long."
+        },
+        "requireCurrentSilent": {
+          "title": "Only if the current microphone is quiet",
+          "description": "Otherwise microphones that stand side by side and hear the same thing will fight."
+        },
+        "cooldownSeconds": {
+          "title": "Stay out after the microphone changes, seconds",
+          "description": "Whoever changed it: the plugin, you or another program."
+        },
+        "whitelist": {
+          "title": "Whitelist",
+          "description": "One per line, part of the name is enough. If not empty, only these can be switched to."
+        },
+        "blacklist": {
+          "title": "Blacklist",
+          "description": "One per line, part of the name is enough. These are not listened to at all. Keep virtual devices here: a signal on them does not mean you are talking."
+        },
+        "watchBluetooth": {
+          "title": "Listen to Bluetooth microphones",
+          "description": "Careful: an open microphone puts a Bluetooth headset into HFP mode, and it sounds like a phone for as long as the plugin listens. Headsets with a radio dongle are not affected."
+        },
+        "pollMs": {
+          "title": "Check the level every, ms"
+        }
+      }
+    }
+  }
+}

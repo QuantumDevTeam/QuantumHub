@@ -57,6 +57,7 @@ $plugins = @{
     'qh.system'      = 'plugins\QuantumHub.Plugin.SystemSpecs\QuantumHub.Plugin.SystemSpecs.csproj'
     'qh.activity' = 'plugins\QuantumHub.Plugin.Activity\QuantumHub.Plugin.Activity.csproj'
     'qh.audio'               = 'plugins\QuantumHub.Plugin.AudioDevices\QuantumHub.Plugin.AudioDevices.csproj'
+    'qh.audio.micswitch'     = 'plugins\QuantumHub.Plugin.MicSwitcher\QuantumHub.Plugin.MicSwitcher.csproj'
     'qh.vr.switcher'         = 'plugins\QuantumHub.Plugin.VrSwitcher\QuantumHub.Plugin.VrSwitcher.csproj'
     'qh.vr.pico.antisleep'   = 'plugins\QuantumHub.Plugin.PicoAntiSleep\QuantumHub.Plugin.PicoAntiSleep.csproj'
     'qh.ui.notify'           = 'plugins\QuantumHub.Plugin.Notifications\QuantumHub.Plugin.Notifications.csproj'
