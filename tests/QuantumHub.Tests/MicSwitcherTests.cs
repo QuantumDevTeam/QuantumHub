@@ -11,6 +11,11 @@ using MicLevel = QuantumHub.Plugin.MicSwitcher.MicLevel;
 namespace QuantumHub.Tests;
 
 /// <summary>Выбор микрофона. Всё на подделках: настоящие микрофоны здесь не открываются.</summary>
+/// <remarks>
+/// Классы, поднимающие настоящий Audio Devices, идут по очереди: две копии NAudio в одном процессе делят один объект COM,
+/// и вторая не может привести его к своему типу. В программе плагин Audio один, поэтому там этого не бывает.
+/// </remarks>
+[Collection("Real audio plugin")]
 public class MicSwitcherTests
 {
     private const string Desk = "desk";
@@ -644,6 +649,20 @@ public class MicSwitcherTests
     [InlineData("ROOT", @"{1}.ROOT\MEDIA\0000", "Microphone (PicoStreamingMicrophone)", false)]
     public void Bluetooth_is_told_apart_from_a_radio_dongle(string? enumerator, string? path, string name, bool expected) =>
         Assert.Equal(expected, BluetoothMic.Detect(enumerator, path, name));
+
+    /// <summary>Перезапуск создаёт новую копию NAudio рядом с уходящей: объект COM старой копии не должен мешать новой.</summary>
+    [Fact]
+    public async Task Audio_devices_still_work_after_a_restart()
+    {
+        await using var hub = await StartAsync(0, Audio);
+        await using var client = await hub.ConnectAsync();
+
+        for (var i = 0; i < 3; i++)
+        {
+            await client.CallAsync("hub", "hub.plugins.restart", HubPayload.Proto(new PluginRef { Id = Audio }));
+            await client.CallAsync("cap:audio.devices", "devices.current");
+        }
+    }
 
     [Fact]
     public async Task The_plugin_works_through_the_hub_and_opens_nothing_while_turned_off()

@@ -12,6 +12,11 @@ using static QuantumHub.Tests.TestHub;
 namespace QuantumHub.Tests;
 
 /// <summary>Сценарии, ради которых существуют плагины-примеры: от начала до конца через настоящий IPC.</summary>
+/// <remarks>
+/// Классы, поднимающие настоящий Audio Devices, идут по очереди: две копии NAudio в одном процессе делят один объект COM,
+/// и вторая не может привести его к своему типу. В программе плагин Audio один, поэтому там этого не бывает.
+/// </remarks>
+[Collection("Real audio plugin")]
 public class HubIntegrationTests
 {
     private static readonly Dependency Backend = new() { Id = Uuid, Version = ">=1.0.0", When = "init" };
