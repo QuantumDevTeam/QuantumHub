@@ -62,6 +62,30 @@
     { "key": "modTime", "type": "bool", "group": "Что показывать", "title": "Текущее время", "default": true },
     { "key": "modMedia", "type": "bool", "group": "Что показывать", "title": "Музыка", "default": true },
     {
+      "key": "showAway",
+      "type": "bool",
+      "group": "Оформление",
+      "title": "Показывать Away, когда отошёл",
+      "description": "Заменяет личный статус, пока нет ввода с клавиатуры и мыши. В VR не срабатывает.",
+      "default": true
+    },
+    {
+      "key": "awaySeconds",
+      "type": "number",
+      "group": "Оформление",
+      "title": "Считать отошедшим через, секунд",
+      "default": 300,
+      "min": 30,
+      "max": 1800
+    },
+    {
+      "key": "awayText",
+      "type": "string",
+      "group": "Оформление",
+      "title": "Текст вместо статуса",
+      "default": "Away"
+    },
+    {
       "key": "windowSource",
       "type": "choice",
       "group": "Оформление",
@@ -76,7 +100,7 @@
       "type": "list",
       "group": "Шаблон",
       "title": "Свой шаблон",
-      "description": "Если заполнен, заменяет выбор строк выше. Подстановки: {status} {window} {process} {title} {vr} {time} {stats} {cpu} {gpu} {ram} {vram} {song} {track} {artist} {progress} {position} {duration}. Строка, где все подстановки пусты, не показывается.",
+      "description": "Если заполнен, заменяет выбор строк выше. Подстановки: {status} {away} {window} {process} {title} {vr} {time} {stats} {cpu} {gpu} {ram} {vram} {song} {track} {artist} {progress} {position} {duration}. Строка, где все подстановки пусты, не показывается.",
       "default": []
     },
     {
@@ -148,6 +172,9 @@
         "modMedia": {
           "title": "Music"
         },
+        "showAway": { "title": "Show Away when you step away", "description": "Replaces the personal status while there is no keyboard or mouse input. Does not trigger in VR." },
+        "awaySeconds": { "title": "Count as away after, seconds" },
+        "awayText": { "title": "Text instead of the status" },
         "windowSource": {
           "title": "What to show about the window",
           "description": "Everyone in the game sees the window title, and titles can contain file names and chats.",
@@ -159,7 +186,7 @@
         },
         "template": {
           "title": "Custom template",
-          "description": "When filled, replaces the line selection above. Placeholders: {status} {window} {process} {title} {vr} {time} {stats} {cpu} {gpu} {ram} {vram} {song} {track} {artist} {progress} {position} {duration}. A line whose placeholders are all empty is not shown."
+          "description": "When filled, replaces the line selection above. Placeholders: {status} {away} {window} {process} {title} {vr} {time} {stats} {cpu} {gpu} {ram} {vram} {song} {track} {artist} {progress} {position} {duration}. A line whose placeholders are all empty is not shown."
         },
         "vrText": {
           "title": "Text in VR"

@@ -115,11 +115,22 @@ public static class PanelRenderer
     /// <param name="view">Раскладка.</param>
     /// <param name="state">Данные.</param>
     /// <param name="path">Куда сохранить PNG.</param>
-    public static void SavePng(PanelView view, PanelState state, string path)
+    /// <param name="hovered">Кнопка под лучом контроллера.</param>
+    public static void SavePng(PanelView view, PanelState state, string path, string? hovered = null)
     {
         var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(Draw(view, state, null)));
+        encoder.Frames.Add(BitmapFrame.Create(Draw(view, state, hovered)));
         using var file = File.Create(path);
         encoder.Save(file);
     }
+}
+
+/// <summary>Рисование на WPF.</summary>
+public sealed class WpfPanelPainter : IPanelPainter
+{
+    /// <inheritdoc/>
+    public byte[] Rgba(PanelView view, PanelState state, string? hovered) => PanelRenderer.RenderRgba(view, state, hovered);
+
+    /// <inheritdoc/>
+    public void Png(PanelView view, PanelState state, string? hovered, string path) => PanelRenderer.SavePng(view, state, path, hovered);
 }

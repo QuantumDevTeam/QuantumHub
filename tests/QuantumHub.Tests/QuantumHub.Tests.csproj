@@ -32,6 +32,7 @@
     <ProjectReference Include="../../src/QuantumHub.Setup/QuantumHub.Setup.csproj" />
     <Compile Include="../../src/QuantumHub.Gui/Services/GuiSettings.cs" Link="Linked/GuiSettings.cs" />
     <ProjectReference Include="../../companions/QuantumHub.VrDashboard/QuantumHub.VrDashboard.csproj" />
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.VrDashboard/QuantumHub.Plugin.VrDashboard.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.VrChatOsc/QuantumHub.Plugin.VrChatOsc.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.Chatbox/QuantumHub.Plugin.Chatbox.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.Notifications/QuantumHub.Plugin.Notifications.csproj" ReferenceOutputAssembly="false" />

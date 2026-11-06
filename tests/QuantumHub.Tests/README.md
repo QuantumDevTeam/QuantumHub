@@ -14,6 +14,7 @@ dotnet test tests/QuantumHub.Tests
 | `VrChatTests.cs` | OSC, сборка чатбокса и отправка, на подделках |
 | `VrAudioEngineTests.cs` | Переключение звука, на подделках |
 | `PicoAntiSleepTests.cs` | Работа со шлемом, на подделке adb |
+| `VrFixTests.cs` | Определение VR, починка списков, панель SteamVR на поддельном рантайме, Away |
 | `AppSettingsTests.cs` | Настройки окна, настройки журнала хаба |
 | `PolishTests.cs` | Шаблон чатбокса, язык и панель SteamVR |
 | `SetupTests.cs` | Файлы установщика: обновление, чужие папки, архив в конце exe |

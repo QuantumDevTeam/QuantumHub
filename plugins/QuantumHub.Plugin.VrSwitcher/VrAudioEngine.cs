@@ -39,7 +39,23 @@ public sealed class VrAudioEngine(
     public bool SessionActive { get; private set; }
 
     /// <summary>Переведён ли звук на гарнитуру.</summary>
-    public bool OnHeadset => _applied;
+    public bool OnHeadset => _applied || _playbackOnHeadset;
+
+    /// <summary>Сообщает, какое устройство сейчас стоит по умолчанию.</summary>
+    /// <param name="flow">Направление.</param>
+    /// <param name="device">Устройство.</param>
+    public void NoteDefault(AudioFlow flow, AudioDevice? device)
+    {
+        if (device is null) return;
+
+        var preset = options().Preset;
+        var onHeadset = VrAudioPreset.Find([device], flow == AudioFlow.Playback ? preset.Playback : preset.Recording) is not null;
+        if (flow == AudioFlow.Playback) _playbackOnHeadset = onHeadset;
+        if (onHeadset) return;
+
+        if (flow == AudioFlow.Playback) memory.DesktopPlayback = device.Id;
+        else memory.DesktopRecording = device.Id;
+    }
 
     /// <summary>Что сейчас происходит, для показа пользователю.</summary>
     public string Status { get; private set; } = Loc.T("Ждём SteamVR", "Waiting for SteamVR");
@@ -147,6 +163,9 @@ public sealed class VrAudioEngine(
         }
     }
 
+    /// <summary>Устройство вывода по умолчанию сейчас принадлежит гарнитуре.</summary>
+    private bool _playbackOnHeadset;
+
     private bool HasMemory => memory.Playback is not null || memory.Recording is not null;
 
     private async Task ApplyAsync(VrAudioOptions settings)
@@ -170,6 +189,7 @@ public sealed class VrAudioEngine(
             await audio.SetDefaultAsync(recording.Id);
 
             _applied = true;
+            _playbackOnHeadset = true;
             _applyPending = false;
             SetStatus(Loc.T($"Звук на гарнитуре: {playback.Name}, {recording.Name}", $"Sound on the headset: {playback.Name}, {recording.Name}"));
         }
@@ -194,10 +214,15 @@ public sealed class VrAudioEngine(
     {
         try
         {
-            var playback = await TargetAsync(AudioFlow.Playback, settings.PcPlayback, memory.Playback);
-            var recording = await TargetAsync(AudioFlow.Recording, settings.PcRecording, memory.Recording);
+            var playback = await TargetAsync(AudioFlow.Playback, settings.PcPlayback, memory.Playback, memory.DesktopPlayback, settings.Preset.Playback);
+            var recording = await TargetAsync(AudioFlow.Recording, settings.PcRecording, memory.Recording, memory.DesktopRecording, settings.Preset.Recording);
 
-            if (playback is not null) await audio.SetDefaultAsync(playback.Id);
+            if (playback is not null)
+            {
+                await audio.SetDefaultAsync(playback.Id);
+                _playbackOnHeadset = false;
+            }
+
             if (recording is not null) await audio.SetDefaultAsync(recording.Id);
 
             SetStatus(playback is null && recording is null
@@ -216,11 +241,17 @@ public sealed class VrAudioEngine(
         }
     }
 
-    /// <summary>Настройка важнее запомненного: она явно выражает желание пользователя.</summary>
-    private async Task<AudioDevice?> TargetAsync(AudioFlow flow, string configured, string? remembered)
+    /// <summary>
+    /// Куда вернуть звук. Настройка важнее запомненного: она явно выражает желание пользователя. Если звук уже был на
+    /// гарнитуре и запоминать было нечего, берём последнее обычное устройство, а потом любое не из гарнитуры.
+    /// </summary>
+    private async Task<AudioDevice?> TargetAsync(AudioFlow flow, string configured, string? remembered, string? desktop, IReadOnlyList<string> headset)
     {
         var devices = await audio.ListAsync(flow);
-        return VrAudioPreset.Find(devices, [configured]) ?? devices.FirstOrDefault(device => device.Id == remembered);
+        return VrAudioPreset.Find(devices, [configured])
+               ?? devices.FirstOrDefault(device => device.Id == remembered)
+               ?? devices.FirstOrDefault(device => device.Id == desktop)
+               ?? devices.FirstOrDefault(device => VrAudioPreset.Find([device], headset) is null);
     }
 
     private void SetStatus(string status)

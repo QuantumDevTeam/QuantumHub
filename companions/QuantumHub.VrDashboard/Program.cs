@@ -10,7 +10,10 @@ namespace QuantumHub.VrDashboard;
 /// Панель в меню SteamVR. Внешний плагин: отдельный процесс, который говорит с хабом по пайпу как обычный клиент.
 /// Запускает её плагин qh.vr.dashboard, когда SteamVR уже работает. Сама она SteamVR не запускает никогда.
 /// </summary>
-/// <remarks>Аргумент <c>--preview файл.png</c> рисует панель с примером данных и завершается, шлем для этого не нужен.</remarks>
+/// <remarks>
+/// Без шлема: <c>--preview файл.png</c> рисует панель с примером данных, <c>--check файл.txt</c> проверяет, что библиотека OpenVR
+/// загружается. Оба завершаются сразу и SteamVR не запускают.
+/// </remarks>
 internal static class Program
 {
     /// <summary>Сколько пробовать подключиться к хабу.</summary>
@@ -21,6 +24,11 @@ internal static class Program
     {
         if (Value(args, "--language") is { } language) Loc.Language = language;
         if (Value(args, "--preview") is { } preview) return Preview(preview);
+        if (Value(args, "--check") is { } check)
+        {
+            File.WriteAllText(check, SteamVrRuntime.Check());
+            return 0;
+        }
 
         var instance = Value(args, "--instance") ?? HubEndpoint.DefaultInstance;
         using var single = new Mutex(true, $@"Local\QuantumHub.VrDashboard.{instance}", out var isFirst);
@@ -44,7 +52,7 @@ internal static class Program
                 ConnectTimeout = ConnectTimeout,
             }).GetAwaiter().GetResult();
 
-            return new OverlayHost(new PanelClient(client), Log).Run();
+            return new OverlayHost(new SteamVrRuntime(), new WpfPanelPainter(), new PanelClient(client), Log).Run();
         }
         catch (Exception ex) when (ex is IOException or TimeoutException or DllNotFoundException)
         {

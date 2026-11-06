@@ -27,6 +27,9 @@ public sealed class TestHub : IAsyncDisposable
     /// <summary>Id плагина Notifications.</summary>
     public const string Notify = "qh.ui.notify";
 
+    /// <summary>Id плагина SteamVR Dashboard.</summary>
+    public const string VrDashboard = "qh.vr.dashboard";
+
     /// <summary>Id плагина Discord.</summary>
     public const string Discord = "qh.discord";
 
@@ -50,6 +53,7 @@ public sealed class TestHub : IAsyncDisposable
         [Notify] = "QuantumHub.Plugin.Notifications",
         [Music] = "QuantumHub.Plugin.Music",
         [Discord] = "QuantumHub.Plugin.Discord",
+        [VrDashboard] = "QuantumHub.Plugin.VrDashboard",
         [Osc] = "QuantumHub.Plugin.VrChatOsc",
         [Chatbox] = "QuantumHub.Plugin.Chatbox",
     };

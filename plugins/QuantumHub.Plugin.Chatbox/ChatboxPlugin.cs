@@ -42,7 +42,7 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
     public async Task StartAsync(IPluginContext context, CancellationToken token)
     {
         _context = context;
-        _engine = new ChatboxEngine(new BusChatData(context.Bus), new OscChatSink(context.Bus), ReadOptions);
+        _engine = new ChatboxEngine(new BusChatData(context.Bus, AwayAfter), new OscChatSink(context.Bus), ReadOptions);
         _panel = new CompanionProcess(Path.Combine(context.Paths.InstallDir, "companion", "QuantumHub.VrChatPanel.exe"), context);
 
         context.Bus.Handle("chatbox.state", (_, _) => ValueTask.FromResult(HubPayload.Json(State())));
@@ -134,6 +134,9 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
         }
     }
 
+    /// <summary>Через сколько секунд простоя показывать Away. <see langword="null"/>, если это выключено.</summary>
+    private double? AwayAfter() => _context.Config.Get("showAway", true) ? _context.Config.Get("awaySeconds", 300d) : null;
+
     private ChatboxOptions ReadOptions()
     {
         var config = _context.Config;
@@ -156,7 +159,8 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
                 config.Get("showRam", true),
                 config.Get("showVram", true),
                 config.Get("windowSource", "process")!,
-                config.Get("template", new List<string>())));
+                config.Get("template", new List<string>()),
+                config.Get("awayText", "Away")!));
     }
 
     private void OnConfigChanged(string key)
@@ -217,7 +221,7 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
     }
 
     /// <summary>Данные из других плагинов. Если кого-то нет, его строка просто не показывается.</summary>
-    private sealed class BusChatData(IHubBus bus) : IChatData
+    private sealed class BusChatData(IHubBus bus, Func<double?> awayAfter) : IChatData
     {
         private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(2);
 
@@ -225,13 +229,20 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
 
         private sealed record VrState(bool Active);
 
+        private sealed record IdleState(double IdleSeconds);
+
         public async Task<ChatInputs> ReadAsync(string status, ChatModules modules)
         {
             var window = modules.Window ? await TryAsync<Window>("cap:user.activity", "window.current") : null;
-            var vr = modules.Window ? await TryAsync<VrState>("cap:user.activity", "vr.get") : null;
+            var after = modules.Status ? awayAfter() : null;
+            var vr = modules.Window || after is not null ? await TryAsync<VrState>("cap:user.activity", "vr.get") : null;
+            var idle = after is not null ? await TryAsync<IdleState>("cap:user.activity", "idle.get") : null;
             var stats = modules.Component ? await TryAsync<StatsInfo>("cap:system.stats", "stats.get") : null;
             var media = modules.Media ? await TryAsync<MediaInfo>("cap:media.player", "player.current") : null;
-            return new ChatInputs(status, window?.Process, vr?.Active == true, stats, media, DateTimeOffset.Now, window?.Title);
+
+            // В шлеме клавиатура и мышь простаивают всегда, поэтому в VR простой ни о чём не говорит.
+            var away = vr?.Active != true && idle?.IdleSeconds >= after;
+            return new ChatInputs(status, window?.Process, vr?.Active == true, stats, media, DateTimeOffset.Now, window?.Title, away);
         }
 
         private async Task<T?> TryAsync<T>(string target, string method) where T : class

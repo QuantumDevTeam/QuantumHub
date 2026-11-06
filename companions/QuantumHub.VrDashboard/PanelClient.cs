@@ -44,8 +44,8 @@ public sealed class PanelClient(IHubBus bus)
         {
             var value = await bus.CallAsync<ConfigValue>("hub", "hub.config.get", new ConfigGetRequest { PluginId = PluginId });
             var config = value.Json.Length > 0 ? JsonNode.Parse(value.Json) : null;
-            bool Flag(string key) => config?[key]?.GetValue<bool>() ?? true;
-            return new PanelOptions(Flag("showAudio"), Flag("showDiscord"), Flag("showSleep"), Flag("showChatbox"));
+            bool Flag(string key, bool fallback = true) => config?[key]?.GetValue<bool>() ?? fallback;
+            return new PanelOptions(Flag("showAudio"), Flag("showDiscord"), Flag("showSleep"), Flag("showChatbox"), Flag("flipPointer", false));
         }
         catch (HubCallException)
         {
