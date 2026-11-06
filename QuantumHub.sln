@@ -59,6 +59,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumHub.Plugin.Chatbox",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumHub.Plugin.Discord", "plugins\QuantumHub.Plugin.Discord\QuantumHub.Plugin.Discord.csproj", "{E8364209-DC12-4E57-A1AE-86D51E6D7BB9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumHub.Setup", "src\QuantumHub.Setup\QuantumHub.Setup.csproj", "{72232B17-8057-45E3-A8E2-8C4A4F84560D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -345,6 +347,18 @@ Global
 		{E8364209-DC12-4E57-A1AE-86D51E6D7BB9}.Release|x64.Build.0 = Release|Any CPU
 		{E8364209-DC12-4E57-A1AE-86D51E6D7BB9}.Release|x86.ActiveCfg = Release|Any CPU
 		{E8364209-DC12-4E57-A1AE-86D51E6D7BB9}.Release|x86.Build.0 = Release|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Debug|x64.Build.0 = Debug|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Debug|x86.Build.0 = Debug|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Release|x64.ActiveCfg = Release|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Release|x64.Build.0 = Release|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Release|x86.ActiveCfg = Release|Any CPU
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -373,5 +387,6 @@ Global
 		{B5179DB9-03C6-4CBD-B0F3-DAE28F32594E} = {07D57EEB-2F50-60C4-C011-FE4FA775C9A8}
 		{FAEA043A-A803-40A0-A263-C76FD3F933A7} = {07D57EEB-2F50-60C4-C011-FE4FA775C9A8}
 		{E8364209-DC12-4E57-A1AE-86D51E6D7BB9} = {07D57EEB-2F50-60C4-C011-FE4FA775C9A8}
+		{72232B17-8057-45E3-A8E2-8C4A4F84560D} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

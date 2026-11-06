@@ -42,6 +42,12 @@ internal static class Program
             RunAsync(args, endpoint, console).GetAwaiter().GetResult();
             return 0;
         }
+        catch (Exception ex)
+        {
+            // Окна у хаба нет, так что без этого файла причину падения при запуске не узнать.
+            WriteCrash(args, ex);
+            throw;
+        }
         finally
         {
             single.ReleaseMutex();
@@ -71,6 +77,16 @@ internal static class Program
 
         await hub.StartAsync();
         await Task.WhenAny(stop.Task, hub.ShutdownRequested);
+    }
+
+    /// <summary>Записывает причину падения в папку журналов.</summary>
+    private static void WriteCrash(string[] args, Exception error)
+    {
+        var data = Value(args, "--data") ??
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "QuantumHub");
+        var logs = Path.Combine(data, "logs");
+        Directory.CreateDirectory(logs);
+        File.AppendAllText(Path.Combine(logs, "crash.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {error}{Environment.NewLine}");
     }
 
     /// <summary>Значение аргумента командной строки.</summary>

@@ -15,10 +15,18 @@
     <AssemblyName>QuantumHub.Gui</AssemblyName>
   </PropertyGroup>
 
+  <!-- В релизе .NET лежит рядом с программой, в папке dotnet, поэтому на компьютере ничего ставить не надо. -->
+  <PropertyGroup Condition="'$(QhPrivateRuntime)' == 'true'">
+    <AppHostDotNetSearch>AppRelative;Global</AppHostDotNetSearch>
+    <AppHostRelativeDotNet>..\dotnet</AppHostRelativeDotNet>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" />
     <ProjectReference Include="../QuantumHub.Client/QuantumHub.Client.csproj" />
     <ProjectReference Include="../QuantumHub.Ui.Contracts/QuantumHub.Ui.Contracts.csproj" />
+    <!-- Только порядок сборки: GUI запускает хаб отдельным процессом и не ссылается на его сборку. -->
+    <ProjectReference Include="../QuantumHub.Service/QuantumHub.Service.csproj" ReferenceOutputAssembly="false" Private="false" SkipGetTargetFrameworkProperties="true" GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained" />
   </ItemGroup>
 
   <ItemGroup>

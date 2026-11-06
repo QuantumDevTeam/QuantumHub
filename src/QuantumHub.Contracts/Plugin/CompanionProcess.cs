@@ -40,12 +40,31 @@ public sealed class CompanionProcess(string executable, IPluginContext context) 
                 return;
             }
 
-            _process = Process.Start(new ProcessStartInfo(executable, $"--instance \"{context.HubInstance}\"")
+            var start = new ProcessStartInfo(executable, $"--instance \"{context.HubInstance}\"")
             {
                 UseShellExecute = false,
                 WorkingDirectory = Path.GetDirectoryName(executable),
-            });
+            };
+
+            // В релизе .NET не установлен в систему, и внешняя часть должна работать на том же, что и хаб.
+            if (RuntimeRoot(System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory()) is { } runtime)
+            {
+                start.Environment["DOTNET_ROOT"] = runtime;
+                start.Environment["DOTNET_ROOT_X64"] = runtime;
+            }
+
+            _process = Process.Start(start);
         }
+    }
+
+    /// <summary>Находит корень .NET по папке рантайма: &lt;root&gt;\shared\Microsoft.NETCore.App\&lt;версия&gt;.</summary>
+    /// <param name="runtimeDirectory">Папка рантайма.</param>
+    /// <returns>Папка или <see langword="null"/>, если раскладка другая.</returns>
+    public static string? RuntimeRoot(string runtimeDirectory)
+    {
+        if (runtimeDirectory.Length == 0) return null;
+        var root = Path.GetFullPath(Path.Combine(runtimeDirectory, "..", "..", ".."));
+        return Directory.Exists(Path.Combine(root, "host", "fxr")) ? root : null;
     }
 
     /// <summary>Закрывает приложение, если оно работает.</summary>

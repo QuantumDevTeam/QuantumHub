@@ -99,4 +99,5 @@ These tools are not part of a published build.
 
 ## Runtime
 
-QuantumHub runs on .NET, which is installed separately and licensed under MIT.
+QuantumHub runs on .NET, licensed under MIT. The installer ships a private copy in the `dotnet` folder of the
+program, together with its `LICENSE.txt` and `ThirdPartyNotices.txt`, and the setup executable embeds the same runtime.

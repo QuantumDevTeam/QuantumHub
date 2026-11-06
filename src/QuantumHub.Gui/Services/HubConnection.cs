@@ -16,14 +16,28 @@ namespace QuantumHub.Gui.Services;
 /// <param name="serviceArgs">Аргументы для хаба, если GUI запускает его сам.</param>
 public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatcher, string? serviceArgs)
 {
-    /// <summary>Сколько раз пробовать подключиться при старте.</summary>
-    private const int ConnectAttempts = 40;
+    /// <summary>Пауза между попытками подключиться.</summary>
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(500);
+    /// <summary>Как часто запускать хаб заново, пока он не отвечает.</summary>
+    private static readonly TimeSpan RelaunchDelay = TimeSpan.FromSeconds(5);
+    /// <summary>Каждая какая попытка подключения запускает хаб.</summary>
+    private const int LaunchEvery = 10;
+    /// <summary>Имя файла хаба.</summary>
+    private const string ServiceExe = "QuantumHub.Service.exe";
+
+    /// <summary>Пользователь сам завершил хаб, и поднимать его снова не надо.</summary>
+    private bool _stopRequested;
+    /// <summary>Цикл перезапуска уже идёт.</summary>
+    private bool _restarting;
 
     /// <summary>Клиент. <see langword="null"/>, пока первое подключение не удалось.</summary>
     public HubClient? Client { get; private set; }
 
     /// <summary>Есть ли связь.</summary>
     public bool IsConnected => Client?.IsConnected == true;
+
+    /// <summary>Что мешает работе с хабом, понятным человеку языком. <see langword="null"/>, если ничего не известно.</summary>
+    public string? ServiceProblem { get; private set; }
 
     /// <summary>Связь появилась или пропала. Срабатывает на потоке интерфейса.</summary>
     public event Action<bool>? StateChanged;
@@ -49,56 +63,132 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
             ConnectTimeout = TimeSpan.FromMilliseconds(250),
         };
 
-        for (var attempt = 0; attempt < ConnectAttempts && Client is null; attempt++)
+        // Хаб может подниматься долго или запуститься позже, поэтому пробуем, пока не получится.
+        for (var attempt = 0; Client is null; attempt++)
         {
             try
             {
                 Client = await HubClient.ConnectAsync(options);
             }
+            catch (UnauthorizedAccessException)
+            {
+                // Такое бывает, когда хаб и GUI запущены с разными правами: один от администратора, другой нет.
+                Report("Хаб запущен с другими правами. Закрой его и запусти QuantumHub без прав администратора.");
+                await Task.Delay(RelaunchDelay);
+            }
             catch (Exception ex) when (ex is TimeoutException or IOException or OperationCanceledException)
             {
-                if (attempt == 0) LaunchService();
-                await Task.Delay(250);
+                if (attempt % LaunchEvery == 0 && !_stopRequested) LaunchService();
+                await Task.Delay(RetryDelay);
             }
         }
 
-        if (Client is null)
-        {
-            App.Log("Could not reach the hub.");
-            return;
-        }
-
-        Client.Disconnected += () => Post(() => StateChanged?.Invoke(false));
-        Client.Reconnected += () => Post(() => StateChanged?.Invoke(true));
-        Post(() => StateChanged?.Invoke(true));
+        Client.Disconnected += () => Post(OnDisconnected);
+        Client.Reconnected += () => Post(OnConnected);
+        Post(OnConnected);
     }
 
-    /// <summary>Запускает процесс хаба. Он переживёт закрытие GUI.</summary>
+    /// <summary>Связь есть.</summary>
+    private void OnConnected()
+    {
+        ServiceProblem = null;
+        StateChanged?.Invoke(true);
+    }
+
+    /// <summary>Связь пропала. Если хаб упал сам, поднимаем его снова.</summary>
+    private async void OnDisconnected()
+    {
+        StateChanged?.Invoke(false);
+        if (_stopRequested || _restarting) return;
+
+        _restarting = true;
+        try
+        {
+            while (!IsConnected && !_stopRequested)
+            {
+                LaunchService();
+                await Task.Delay(RelaunchDelay);
+            }
+        }
+        finally
+        {
+            _restarting = false;
+        }
+    }
+
+    /// <summary>Запоминает проблему и показывает её в интерфейсе.</summary>
+    private void Report(string problem)
+    {
+        if (ServiceProblem == problem) return;
+        ServiceProblem = problem;
+        App.Log(problem);
+        Post(() => StateChanged?.Invoke(false));
+    }
+
+    /// <summary>Запускает процесс хаба. Он переживёт закрытие GUI. Второй экземпляр хаба сам завершится, так что вызывать это безопасно.</summary>
     public void LaunchService()
     {
+        _stopRequested = false;
         var path = FindService();
         if (path is null)
         {
-            App.Log("QuantumHub.Service.exe was not found.");
+            Report($"Не найден {ServiceExe}. Переустанови QuantumHub или собери его командой scripts\\publish.ps1.");
             return;
         }
 
-        Process.Start(new ProcessStartInfo(path, serviceArgs ?? string.Empty) { UseShellExecute = false, CreateNoWindow = true });
+        var arguments = serviceArgs ?? string.Empty;
+        if (endpoint.Instance != HubEndpoint.DefaultInstance && !arguments.Contains("--instance"))
+            arguments = $"--instance \"{endpoint.Instance}\" {arguments}".TrimEnd();
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(path, arguments)
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(path),
+            })?.Dispose();
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)
+        {
+            Report($"Не удалось запустить хаб: {ex.Message}");
+        }
     }
 
-    /// <summary>Ищет exe хаба. Раскладка: &lt;root&gt;\gui\QuantumHub.Gui.exe рядом с &lt;root&gt;\QuantumHub.Service.exe.</summary>
+    /// <summary>Ищет exe хаба: в установленной программе, потом в репозитории, если GUI собран отдельно.</summary>
     /// <returns>Путь или <see langword="null"/>.</returns>
     public static string? FindService()
     {
-        // Published layout: <root>\gui\QuantumHub.Gui.exe next to <root>\QuantumHub.Service.exe.
-        var candidate = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "QuantumHub.Service.exe"));
-        return File.Exists(candidate) ? candidate : null;
+        var baseDir = AppContext.BaseDirectory;
+
+        // Раскладка программы: <root>\gui\QuantumHub.Gui.exe рядом с <root>\QuantumHub.Service.exe.
+        foreach (var path in new[] { Path.Combine(baseDir, "..", ServiceExe), Path.Combine(baseDir, ServiceExe) })
+        {
+            if (File.Exists(path)) return Path.GetFullPath(path);
+        }
+
+        for (var dir = new DirectoryInfo(baseDir); dir is not null; dir = dir.Parent)
+        {
+            if (!File.Exists(Path.Combine(dir.FullName, "QuantumHub.sln"))) continue;
+
+            // Собранная программа с плагинами лучше голого хаба из bin.
+            var published = Path.Combine(dir.FullName, "artifacts", "QuantumHub", ServiceExe);
+            if (File.Exists(published)) return published;
+
+            var bin = new DirectoryInfo(Path.Combine(dir.FullName, "src", "QuantumHub.Service", "bin"));
+            return bin.Exists
+                ? bin.EnumerateFiles(ServiceExe, SearchOption.AllDirectories).OrderByDescending(file => file.LastWriteTimeUtc).FirstOrDefault()?.FullName
+                : null;
+        }
+
+        return null;
     }
 
     /// <summary>Просит хаб завершить работу.</summary>
     public async Task ShutdownHubAsync()
     {
         if (!IsConnected) return;
+        _stopRequested = true;
         try
         {
             await Client!.CallAsync(Envelopes.HubTarget, "hub.shutdown");
@@ -127,13 +217,31 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
         }
     }
 
+    /// <summary>Вызов для интерфейса, которому нужен и ответ, и текст ошибки.</summary>
+    /// <typeparam name="T">Тип ответа.</typeparam>
+    /// <param name="method">Метод хаба.</param>
+    /// <param name="request">Запрос.</param>
+    /// <returns>Ответ либо текст ошибки.</returns>
+    public async Task<(T? Reply, string? Error)> CallWithErrorAsync<T>(string method, IMessage request) where T : class, IMessage<T>, new()
+    {
+        if (!IsConnected) return (null, ServiceProblem ?? "Хаб ещё запускается. Попробуй через пару секунд.");
+        try
+        {
+            return (await Client!.CallAsync<T>(Envelopes.HubTarget, method, request), null);
+        }
+        catch (HubCallException ex)
+        {
+            return (null, ex.Message);
+        }
+    }
+
     /// <summary>Вызов без ответа для интерфейса.</summary>
     /// <param name="method">Метод хаба.</param>
     /// <param name="request">Запрос.</param>
     /// <returns>Текст ошибки или <see langword="null"/> при успехе.</returns>
     public async Task<string?> TryRunAsync(string method, IMessage request)
     {
-        if (!IsConnected) return "Нет связи с хабом.";
+        if (!IsConnected) return ServiceProblem ?? "Хаб ещё запускается. Попробуй через пару секунд.";
         try
         {
             await Client!.CallAsync(Envelopes.HubTarget, method, HubPayload.Proto(request));

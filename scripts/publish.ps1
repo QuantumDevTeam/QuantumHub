@@ -2,6 +2,7 @@
 #   QuantumHub.Service.exe    the hub
 #   gui\QuantumHub.Gui.exe    the admin console
 #   plugins\<id>\             bundled plugins
+#   dotnet\                   a private .NET: the machine needs nothing installed
 #   samples\                  the external test client
 #   packages\*.qhp            the same plugins as installable archives
 param(
@@ -18,11 +19,37 @@ function Publish([string]$Project, [string]$Destination) {
     if ($LASTEXITCODE -ne 0) { throw "Publishing $Project failed." }
 }
 
+# The exe files of the hub and the GUI look for .NET in the dotnet folder next to the program. The launcher is
+# only rebuilt when its inputs change, and this setting is not one of them, so the old one has to go first.
+function PublishApp([string]$Project, [string]$Destination) {
+    Get-ChildItem (Join-Path (Split-Path (Join-Path $repo $Project)) 'obj') -Recurse -Filter 'apphost.exe' -ErrorAction SilentlyContinue | Remove-Item -Force
+    dotnet publish (Join-Path $repo $Project) -c $Configuration -o $Destination --nologo -v q -p:QhPrivateRuntime=true
+    if ($LASTEXITCODE -ne 0) { throw "Publishing $Project failed." }
+}
+
+# Copies the runtime this machine has: the same files the .NET installer would put on a user's computer.
+function Copy-Runtime([string]$Destination) {
+    $dotnet = Split-Path (Get-Command dotnet).Source
+    $versions = Get-ChildItem (Join-Path $dotnet 'shared\Microsoft.WindowsDesktop.App') -Directory |
+        Where-Object { $_.Name -match '^10\.\d+\.\d+$' -and (Test-Path (Join-Path $dotnet "shared\Microsoft.NETCore.App\$($_.Name)")) -and
+                       (Test-Path (Join-Path $dotnet "host\fxr\$($_.Name)")) }
+    $version = ($versions | Sort-Object { [version]$_.Name } | Select-Object -Last 1).Name
+    if (-not $version) { throw 'Need the .NET 10 and Windows Desktop runtimes of the same version.' }
+
+    foreach ($part in "host\fxr\$version", "shared\Microsoft.NETCore.App\$version", "shared\Microsoft.WindowsDesktop.App\$version") {
+        $target = Join-Path $Destination $part
+        New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+        Copy-Item (Join-Path $dotnet $part) $target -Recurse
+    }
+    foreach ($file in 'LICENSE.txt', 'ThirdPartyNotices.txt') { Copy-Item (Join-Path $dotnet $file) $Destination }
+}
+
 if (Test-Path $Output) { Remove-Item $Output -Recurse -Force }
 New-Item -ItemType Directory -Force $Output | Out-Null
 $Output = (Resolve-Path $Output).Path
 
-Publish 'src\QuantumHub.Service\QuantumHub.Service.csproj' $Output
+PublishApp 'src\QuantumHub.Service\QuantumHub.Service.csproj' $Output
+Copy-Runtime (Join-Path $Output 'dotnet')
 Publish 'samples\QuantumHub.Sample.ExternalConsole\QuantumHub.Sample.ExternalConsole.csproj' (Join-Path $Output 'samples')
 
 $plugins = @{
@@ -42,7 +69,7 @@ $companions = @{
     'qh.ui.notify'      = 'companions\QuantumHub.Notifier\QuantumHub.Notifier.csproj'
     'qh.vrchat.chatbox' = 'companions\QuantumHub.VrChatPanel\QuantumHub.VrChatPanel.csproj'
 }
-if (-not $NoGui) { Publish 'src\QuantumHub.Gui\QuantumHub.Gui.csproj' (Join-Path $Output 'gui') }
+if (-not $NoGui) { PublishApp 'src\QuantumHub.Gui\QuantumHub.Gui.csproj' (Join-Path $Output 'gui') }
 
 $packages = Join-Path $Output 'packages'
 New-Item -ItemType Directory -Force $packages | Out-Null

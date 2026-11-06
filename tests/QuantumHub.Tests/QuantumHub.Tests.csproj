@@ -27,6 +27,7 @@
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.SystemSpecs/QuantumHub.Plugin.SystemSpecs.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.Music/QuantumHub.Plugin.Music.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.Discord/QuantumHub.Plugin.Discord.csproj" />
+    <ProjectReference Include="../../src/QuantumHub.Setup/QuantumHub.Setup.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.VrChatOsc/QuantumHub.Plugin.VrChatOsc.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.Chatbox/QuantumHub.Plugin.Chatbox.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.Notifications/QuantumHub.Plugin.Notifications.csproj" ReferenceOutputAssembly="false" />

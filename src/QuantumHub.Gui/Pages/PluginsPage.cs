@@ -2,6 +2,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using QuantumHub.Contracts.Proto;
 using QuantumHub.Gui.Services;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
@@ -12,6 +14,8 @@ public sealed class PluginsPage : HubPage
 {
     private readonly MainWindow _window;
     private readonly StackPanel _body;
+    /// <summary>Итог последней установки.</summary>
+    private InfoBar? _notice;
     /// <summary>Карточки плагинов.</summary>
     private readonly StackPanel _list = new() { Spacing = 8 };
 
@@ -21,7 +25,7 @@ public sealed class PluginsPage : HubPage
     public PluginsPage(HubConnection hub, MainWindow window) : base(hub)
     {
         _window = window;
-        var (root, body) = Fluent.Page("Плагины", "Всё, что умеет хаб, умеют плагины. Без них он не делает ничего.");
+        var (root, body) = Fluent.Page("Плагины", "Всё, что умеет хаб, умеют плагины. Чтобы добавить плагин, открой файл .qhp или перетащи его в это окно.");
         _body = body;
 
         var install = new Button { Content = "Установить плагин…", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
@@ -29,6 +33,30 @@ public sealed class PluginsPage : HubPage
         _body.Children.Add(install);
         _body.Children.Add(_list);
         Content = root;
+
+        // Прозрачный фон нужен, чтобы файл можно было бросить и на пустое место страницы.
+        Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        AllowDrop = true;
+        DragOver += OnDragOver;
+        Drop += OnDrop;
+    }
+
+    /// <summary>Файл несут над страницей.</summary>
+    private static void OnDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
+        e.AcceptedOperation = DataPackageOperation.Copy;
+        e.DragUIOverride.Caption = "Установить плагин";
+    }
+
+    /// <summary>Файл бросили на страницу.</summary>
+    private async void OnDrop(object sender, DragEventArgs e)
+    {
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
+        foreach (var item in await e.DataView.GetStorageItemsAsync())
+        {
+            if (item is StorageFile file) await InstallFileAsync(file.Path);
+        }
     }
 
     /// <inheritdoc/>
@@ -120,6 +148,47 @@ public sealed class PluginsPage : HubPage
         foreach (var extension in new[] { ".qhp", ".zip", ".dll" }) picker.FileTypeFilter.Add(extension);
 
         var file = await picker.PickSingleFileAsync();
-        if (file is not null) await RunAsync("hub.plugins.install", new InstallRequest { Path = file.Path });
+        if (file is not null) await InstallFileAsync(file.Path);
+    }
+
+    /// <summary>Спрашивает и устанавливает. Файл пришёл из проводника, и пользователь мог открыть его случайно.</summary>
+    /// <param name="path">Путь к файлу плагина.</param>
+    public async Task ConfirmAndInstallAsync(string path)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = _window.Content.XamlRoot,
+            Title = $"Установить {Path.GetFileName(path)}?",
+            Content = "Плагин работает с теми же правами, что и QuantumHub. Ставь только то, чему доверяешь.",
+            PrimaryButtonText = "Установить",
+            CloseButtonText = "Отмена",
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary) await InstallFileAsync(path);
+    }
+
+    /// <summary>Устанавливает файл и сообщает результат.</summary>
+    /// <param name="path">Путь к файлу плагина.</param>
+    private async Task InstallFileAsync(string path)
+    {
+        var (plugin, error) = await Hub.CallWithErrorAsync<PluginInfo>("hub.plugins.install", new InstallRequest { Path = path });
+        if (plugin is null)
+        {
+            Notify(InfoBarSeverity.Error, "Не получилось установить", error ?? Path.GetFileName(path));
+            return;
+        }
+
+        var name = plugin.Manifest.Name.Length > 0 ? plugin.Manifest.Name : plugin.Manifest.Id;
+        if (plugin.Error.Length > 0) Notify(InfoBarSeverity.Warning, $"«{name}» установлен, но не запустился", plugin.Error);
+        else Notify(InfoBarSeverity.Success, $"«{name}» {plugin.Manifest.Version} установлен", string.Empty);
+    }
+
+    /// <summary>Показывает итог установки вместо предыдущего.</summary>
+    private void Notify(InfoBarSeverity severity, string title, string message)
+    {
+        if (_notice is not null) _body.Children.Remove(_notice);
+        _notice = new InfoBar { IsOpen = true, Severity = severity, Title = title, Message = message };
+        _body.Children.Insert(0, _notice);
     }
 }

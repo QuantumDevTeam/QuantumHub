@@ -6,6 +6,12 @@
     <RollForward>LatestPatch</RollForward>
   </PropertyGroup>
 
+  <!-- В релизе .NET лежит рядом с программой, в папке dotnet, поэтому на компьютере ничего ставить не надо. -->
+  <PropertyGroup Condition="'$(QhPrivateRuntime)' == 'true'">
+    <AppHostDotNetSearch>AppRelative;Global</AppHostDotNetSearch>
+    <AppHostRelativeDotNet>dotnet</AppHostRelativeDotNet>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../QuantumHub.Core/QuantumHub.Core.csproj" />
   </ItemGroup>

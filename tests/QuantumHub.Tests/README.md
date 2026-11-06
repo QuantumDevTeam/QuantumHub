@@ -14,6 +14,7 @@ dotnet test tests/QuantumHub.Tests
 | `VrChatTests.cs` | OSC, сборка чатбокса и отправка, на подделках |
 | `VrAudioEngineTests.cs` | Переключение звука, на подделках |
 | `PicoAntiSleepTests.cs` | Работа со шлемом, на подделке adb |
+| `SetupTests.cs` | Файлы установщика: обновление, чужие папки, архив в конце exe |
 | `DiscordTests.cs` | Протокол Discord на поддельном сервере и настоящем пайпе со случайным именем |
 | `ActivityTests.cs` | Наблюдение за процессами и подсчёт загрузки |
 | `TestHub.cs` | Помощник: хаб со своими папками и своим pipe |

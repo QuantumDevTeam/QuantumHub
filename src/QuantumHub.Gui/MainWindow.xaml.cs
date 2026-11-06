@@ -25,6 +25,8 @@ public sealed partial class MainWindow : Window
     private bool _reallyClosing;
     /// <summary>Подписки на хаб уже оформлены.</summary>
     private bool _subscribed;
+    /// <summary>Завершается после первого подключения и построения страниц.</summary>
+    private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>Создаёт окно.</summary>
     /// <param name="hub">Связь с хабом.</param>
@@ -83,7 +85,11 @@ public sealed partial class MainWindow : Window
     private async void OnHubStateChanged(bool connected)
     {
         ShowStatus(connected);
-        if (!connected) return;
+        if (!connected)
+        {
+            if (CurrentTag == "overview") Show("overview");
+            return;
+        }
 
         // Только один раз: после переподключения клиент сам восстанавливает подписки.
         if (!_subscribed)
@@ -95,6 +101,17 @@ public sealed partial class MainWindow : Window
 
         await RefreshPluginsAsync();
         Navigate(CurrentTag ?? _initialPage);
+        _ready.TrySetResult();
+    }
+
+    /// <summary>Устанавливает плагин, открытый из проводника, и показывает результат на странице плагинов.</summary>
+    /// <param name="path">Путь к файлу плагина.</param>
+    public async Task InstallFromShellAsync(string path)
+    {
+        ShowAndFocus();
+        await _ready.Task;
+        Navigate("plugins");
+        if (PageHost.Content is PluginsPage page) await page.ConfirmAndInstallAsync(path);
     }
 
     /// <summary>Обновляет индикатор связи в заголовке.</summary>

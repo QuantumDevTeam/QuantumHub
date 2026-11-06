@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(QhWindows)</TargetFramework>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>../QuantumHub.Gui/Assets/app.ico</ApplicationIcon>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../QuantumHub.Client/QuantumHub.Client.csproj" />
+    <InternalsVisibleTo Include="QuantumHub.Tests" />
+  </ItemGroup>
+</Project>

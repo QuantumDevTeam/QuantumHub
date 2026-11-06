@@ -85,7 +85,7 @@ public sealed class OverviewPage : HubPage
             IsClosable = false,
             Severity = InfoBarSeverity.Warning,
             Title = "Хаб не отвечает",
-            Message = "Плагины недоступны, пока он не запущен.",
+            Message = Hub.ServiceProblem ?? "Запускаю его. Плагины станут доступны через несколько секунд.",
             ActionButton = button,
         });
     }

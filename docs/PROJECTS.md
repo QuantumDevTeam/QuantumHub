@@ -1,6 +1,6 @@
 # Что за проекты
 
-В решении 21 проект. Выглядит много, но идея простая: **каждый процесс получает только то, что
+В решении 22 проекта. Выглядит много, но идея простая: **каждый процесс получает только то, что
 ему нужно**. Хабу незачем знать про WinUI, GUI незачем уметь загружать плагины, а внешнему плагину
 незачем тянуть всё ядро.
 
@@ -92,6 +92,7 @@ flowchart TD
 | `QuantumHub.Client` | SDK для внешних плагинов на .NET. Им же пользуется GUI | [README](../src/QuantumHub.Client/README.md) |
 | `QuantumHub.Gui` | Админка на WinUI 3: окно, трей, страницы плагинов | [README](../src/QuantumHub.Gui/README.md) |
 | `QuantumHub.Ui.Contracts` | Интерфейс нативной страницы. Отдельно, потому что зависит от WinUI | [README](../src/QuantumHub.Ui.Contracts/README.md) |
+| `QuantumHub.Setup` | Установщик и деинсталлятор в одном exe | [README](../src/QuantumHub.Setup/README.md) |
 
 ### Плагины
 

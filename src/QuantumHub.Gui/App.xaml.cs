@@ -8,7 +8,8 @@ namespace QuantumHub.Gui;
 /// <summary>Приложение GUI: единственность экземпляра, трей, главное окно и связь с хабом.</summary>
 /// <remarks>
 /// Аргументы: <c>--minimized</c> стартует только в трее, <c>--instance</c> выбирает экземпляр хаба,
-/// <c>--page</c> открывает страницу, <c>--service-args</c> передаёт аргументы хабу, если GUI запускает его сам.
+/// <c>--page</c> открывает страницу, <c>--service-args</c> передаёт аргументы хабу, если GUI запускает его сам,
+/// <c>--install</c> устанавливает плагин из файла: так открываются файлы .qhp из проводника.
 /// </remarks>
 public partial class App : Application
 {
@@ -54,6 +55,7 @@ public partial class App : Application
     {
         var argv = Environment.GetCommandLineArgs();
         var instance = Option(argv, "--instance") ?? HubEndpoint.DefaultInstance;
+        if (Option(argv, "--install") is { } install) PendingInstalls.Add(instance, Path.GetFullPath(install));
 
         _single = new Mutex(true, $@"Local\QuantumHub.Gui.{instance}", out var isFirst);
         _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, $@"Local\QuantumHub.Gui.Show.{instance}");
@@ -72,12 +74,26 @@ public partial class App : Application
             ShowWindow, Quit, QuitAndStopHub);
 
         ThreadPool.RegisterWaitForSingleObject(_showSignal,
-            (_, _) => dispatcher.TryEnqueue(ShowWindow), null, Timeout.Infinite, false);
+            (_, _) => dispatcher.TryEnqueue(() =>
+            {
+                ShowWindow();
+                RunPendingInstalls(instance);
+            }), null, Timeout.Infinite, false);
 
         if (argv.Contains("--minimized")) _window.PrepareHidden();
         else ShowWindow();
 
         _ = _hub.StartAsync();
+        RunPendingInstalls(instance);
+    }
+
+    /// <summary>Устанавливает плагины, которые открыли в проводнике.</summary>
+    private async void RunPendingInstalls(string instance)
+    {
+        foreach (var path in PendingInstalls.Take(instance))
+        {
+            if (_window is not null) await _window.InstallFromShellAsync(path);
+        }
     }
 
     /// <summary>Показывает окно.</summary>
