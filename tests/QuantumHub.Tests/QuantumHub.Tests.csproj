@@ -22,8 +22,9 @@
     <ProjectReference Include="../../src/QuantumHub.Client/QuantumHub.Client.csproj" />
     <!-- Build order only: the tests install these plugins from their output folders. -->
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.UuidBackend/QuantumHub.Plugin.UuidBackend.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="../../plugins/QuantumHub.Plugin.AudioDevices/QuantumHub.Plugin.AudioDevices.csproj" ReferenceOutputAssembly="false" />
     <!-- Эти проверяются напрямую: у них есть логика, отделённая от железа. -->
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.AudioDevices/QuantumHub.Plugin.AudioDevices.csproj" />
+    <ProjectReference Include="../../plugins/QuantumHub.Plugin.MicSwitcher/QuantumHub.Plugin.MicSwitcher.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.VrSwitcher/QuantumHub.Plugin.VrSwitcher.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.Activity/QuantumHub.Plugin.Activity.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.SystemSpecs/QuantumHub.Plugin.SystemSpecs.csproj" />
