@@ -116,12 +116,12 @@ public sealed class ActivityPlugin : IHubPlugin, IUiProvider
                 await Task.Delay(PollInterval, token);
                 foreach (var change in _processes.Poll(IsRunning))
                 {
-                    _context.Logger.Info($"{change.Name}: {(change.Running ? "запущен" : "закрыт")}");
+                    _context.Logger.Info($"{change.Name}: {(change.Running ? Loc.T("запущен", "running") : "закрыт")}");
                     _ = _context.Bus.PublishAsync(ProcessTopic, HubPayload.Json(change), token);
                 }
 
                 var vr = IsVrRunning();
-                _context.Ui.Set("vr", vr ? "запущен" : "не запущен");
+                _context.Ui.Set("vr", vr ? Loc.T("запущен", "running") : Loc.T("не запущен", "not running"));
                 if (vr != _vrActive)
                 {
                     _vrActive = vr;
@@ -129,7 +129,7 @@ public sealed class ActivityPlugin : IHubPlugin, IUiProvider
                 }
 
                 var idle = ReadIdle();
-                _context.Ui.Set("idle", idle.IsIdle ? "отошёл" : "за компьютером");
+                _context.Ui.Set("idle", idle.IsIdle ? Loc.T("отошёл", "away") : Loc.T("за компьютером", "at the computer"));
                 if (_idle.Update(TimeSpan.FromSeconds(idle.IdleSeconds), IdleThreshold()))
                     _ = _context.Bus.PublishAsync(IdleTopic, HubPayload.Json(ReadIdle()), token);
             }
@@ -227,12 +227,12 @@ public sealed class ActivityPlugin : IHubPlugin, IUiProvider
     /// <inheritdoc/>
     public IEnumerable<UiPage> GetPages()
     {
-        yield return Ui.Page("main", "Сейчас", "E7C4",
-            Ui.KeyValue("Процесс", "process"),
-            Ui.KeyValue("Заголовок", "title"),
-            Ui.KeyValue("Пользователь", "idle"),
+        yield return Ui.Page("main", Loc.T("Сейчас", "Now"), "E7C4",
+            Ui.KeyValue(Loc.T("Процесс", "Process"), "process"),
+            Ui.KeyValue(Loc.T("Заголовок", "Title"), "title"),
+            Ui.KeyValue(Loc.T("Пользователь", "User"), "idle"),
             Ui.KeyValue("VR", "vr"),
-            Ui.KeyValue("Переключений", "switches"));
+            Ui.KeyValue(Loc.T("Переключений", "Switches"), "switches"));
     }
 
     /// <inheritdoc/>

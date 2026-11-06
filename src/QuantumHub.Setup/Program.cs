@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Diagnostics;
 
 namespace QuantumHub.Setup;
@@ -12,6 +13,11 @@ namespace QuantumHub.Setup;
 /// </remarks>
 internal static class Program
 {
+    /// <summary>Основной язык в коде языка Windows.</summary>
+    private const int PrimaryLanguageMask = 0x3FF;
+    /// <summary>Код русского языка.</summary>
+    private const int RussianLanguageId = 0x19;
+
     /// <summary>Внутренний аргумент: деинсталлятор уже работает из временной папки.</summary>
     private const string FromTempArgument = "--from-temp";
 
@@ -22,6 +28,10 @@ internal static class Program
     private static int Main(string[] args)
     {
         var silent = args.Contains("--silent");
+
+        // Установщик собран без данных о культурах, поэтому язык спрашиваем у Windows напрямую.
+        Loc.Language = (GetUserDefaultUILanguage() & PrimaryLanguageMask) == RussianLanguageId ? Loc.Russian : Loc.English;
+
         try
         {
             var exe = Environment.ProcessPath!;
@@ -31,7 +41,7 @@ internal static class Program
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             if (silent) Console.Error.WriteLine(ex);
-            else Dialogs.Error($"Не получилось. Закрой QuantumHub и попробуй ещё раз.\n\n{ex.Message}");
+            else Dialogs.Error(Loc.T($"Не получилось. Закрой QuantumHub и попробуй ещё раз.\n\n{ex.Message}", $"That did not work. Close QuantumHub and try again.\n\n{ex.Message}"));
             return 1;
         }
     }
@@ -48,10 +58,10 @@ internal static class Program
         if (!silent)
         {
             var (accepted, option) = Dialogs.Confirm(
-                existing is null ? $"Установить QuantumHub {version}?" : $"Обновить QuantumHub до версии {version}?",
-                $"Папка: {installer.Directory}\nПрава администратора и .NET не нужны. Настройки и твои плагины сохранятся.",
-                existing is null ? "Установить" : "Обновить",
-                "Запускать вместе с Windows", autostart);
+                existing is null ? Loc.T($"Установить QuantumHub {version}?", $"Install QuantumHub {version}?") : Loc.T($"Обновить QuantumHub до версии {version}?", $"Update QuantumHub to {version}?"),
+                Loc.T($"Папка: {installer.Directory}\nПрава администратора и .NET не нужны. Настройки и твои плагины сохранятся.", $"Folder: {installer.Directory}\nNo administrator rights or .NET needed. Your settings and plugins are kept."),
+                existing is null ? Loc.T("Установить", "Install") : Loc.T("Обновить", "Update"),
+                Loc.T("Запускать вместе с Windows", "Start with Windows"), autostart);
             if (!accepted) return 2;
             autostart = option;
         }
@@ -65,7 +75,7 @@ internal static class Program
         }
 
         if (silent) Work(_ => { }).GetAwaiter().GetResult();
-        else Dialogs.Progress("Устанавливаю QuantumHub…", Work);
+        else Dialogs.Progress(Loc.T("Устанавливаю QuantumHub…", "Installing QuantumHub…"), Work);
 
         if (!args.Contains("--no-launch"))
         {
@@ -82,7 +92,7 @@ internal static class Program
         var installer = new Installer(Value(args, "--dir") ?? Path.GetDirectoryName(exe)!);
         if (!installer.IsInstalled)
         {
-            if (!silent) Dialogs.Error("Этот файл нужно запускать из папки установленной программы.");
+            if (!silent) Dialogs.Error(Loc.T("Этот файл нужно запускать из папки установленной программы.", "Run this file from the folder of the installed program."));
             return 1;
         }
 
@@ -102,9 +112,9 @@ internal static class Program
 
         if (!silent)
         {
-            var (accepted, _) = Dialogs.Confirm("Удалить QuantumHub?",
-                $"Программа будет удалена из папки {installer.Directory}.\nНастройки останутся в профиле пользователя и пригодятся, если поставишь её снова.",
-                "Удалить", null, false);
+            var (accepted, _) = Dialogs.Confirm(Loc.T("Удалить QuantumHub?", "Remove QuantumHub?"),
+                Loc.T($"Программа будет удалена из папки {installer.Directory}.\nНастройки останутся в профиле пользователя и пригодятся, если поставишь её снова.", $"The program will be removed from {installer.Directory}.\nYour settings stay in your user profile in case you install it again."),
+                Loc.T("Удалить", "Remove"), null, false);
             if (!accepted)
             {
                 RemoveSelfLater(exe);
@@ -121,7 +131,7 @@ internal static class Program
         }
 
         if (silent) Work(_ => { }).GetAwaiter().GetResult();
-        else Dialogs.Progress("Удаляю QuantumHub…", Work);
+        else Dialogs.Progress(Loc.T("Удаляю QuantumHub…", "Removing QuantumHub…"), Work);
 
         RemoveSelfLater(exe);
         return 0;
@@ -134,6 +144,9 @@ internal static class Program
             UseShellExecute = false,
             CreateNoWindow = true,
         })?.Dispose();
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern ushort GetUserDefaultUILanguage();
 
     /// <summary>Значение аргумента командной строки.</summary>
     private static string? Value(string[] args, string name)

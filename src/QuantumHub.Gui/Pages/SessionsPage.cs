@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using QuantumHub.Contracts.Proto;
+using QuantumHub.Contracts.Ui;
 using QuantumHub.Gui.Services;
 
 namespace QuantumHub.Gui.Pages;
@@ -14,7 +15,7 @@ public sealed class SessionsPage : HubPage
     /// <param name="hub">Связь с хабом.</param>
     public SessionsPage(HubConnection hub) : base(hub)
     {
-        var (root, body) = Fluent.Page("Подключения", "Внешние плагины и другие программы, которые сейчас говорят с хабом.");
+        var (root, body) = Fluent.Page(Loc.T("Подключения", "Connections"), Loc.T("Внешние плагины и другие программы, которые сейчас говорят с хабом.", "External plugins and other programs talking to the hub right now."));
         _body = body;
         Content = root;
     }
@@ -36,6 +37,30 @@ public sealed class SessionsPage : HubPage
         _body.Children.Clear();
         foreach (var session in list.Sessions.OrderBy(entry => entry.Role == "gui").ThenBy(entry => entry.DisplayName))
             _body.Children.Add(Row(session));
+
+        var history = await Hub.TryCallAsync<SessionHistory>("hub.sessions.history", new PluginRef());
+        if (history is null || history.Entries.Count == 0) return;
+
+        var heading = Fluent.Text(Loc.T("За этот сеанс", "This session"), "BodyStrongTextBlockStyle");
+        heading.Margin = new Thickness(0, 16, 0, 0);
+        _body.Children.Add(heading);
+
+        var lines = new StackPanel { Spacing = 6 };
+        foreach (var entry in history.Entries) lines.Children.Add(HistoryRow(entry));
+        _body.Children.Add(Fluent.Card(lines));
+    }
+
+    /// <summary>Строка истории: время, имя и подключён ли клиент сейчас.</summary>
+    private static Grid HistoryRow(SessionHistoryEntry entry)
+    {
+        static string Time(long unixMs) => Fluent.Clock(DateTimeOffset.FromUnixTimeMilliseconds(unixMs).ToLocalTime());
+
+        var ended = entry.DisconnectedUnixMs > 0 ? Time(entry.DisconnectedUnixMs) : Loc.T("подключён", "connected");
+        var name = entry.DisplayName.Length > 0 ? entry.DisplayName : entry.ClientId;
+        return Fluent.Columns(
+            (Fluent.Caption(Time(entry.ConnectedUnixMs)), new GridLength(84)),
+            (Fluent.Text(name), Fluent.Star),
+            (Fluent.Caption(ended), Fluent.Auto));
     }
 
     /// <summary>Карточка подключения.</summary>
@@ -43,13 +68,13 @@ public sealed class SessionsPage : HubPage
     {
         var text = new StackPanel { Spacing = 2 };
         text.Children.Add(Fluent.Text($"{session.DisplayName} {session.Version}", "BodyStrongTextBlockStyle"));
-        text.Children.Add(Fluent.Caption($"{session.ClientId} · процесс {session.ProcessId} · с {DateTimeOffset.FromUnixTimeMilliseconds(session.ConnectedUnixMs).ToLocalTime():HH:mm:ss}"));
+        text.Children.Add(Fluent.Caption(Loc.T($"{session.ClientId} · процесс {session.ProcessId} · с {Fluent.Clock(DateTimeOffset.FromUnixTimeMilliseconds(session.ConnectedUnixMs).ToLocalTime())}", $"{session.ClientId} · process {session.ProcessId} · since {Fluent.Clock(DateTimeOffset.FromUnixTimeMilliseconds(session.ConnectedUnixMs).ToLocalTime())}")));
 
         foreach (var dependency in session.Dependencies)
         {
             var name = dependency.Dependency.Id.Length > 0 ? dependency.Dependency.Id : dependency.Dependency.Capability;
             var provider = dependency.ProviderId.Length > 0 ? $" ← {dependency.ProviderId}" : string.Empty;
-            text.Children.Add(Fluent.Caption($"зависимость: {name} ({dependency.State}){provider}"));
+            text.Children.Add(Fluent.Caption(Loc.T($"зависимость: {name} ({dependency.State}){provider}", $"dependency: {name} ({dependency.State}){provider}")));
         }
 
         var transport = new Border

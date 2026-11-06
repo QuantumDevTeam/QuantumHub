@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Runtime.InteropServices;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -21,6 +22,11 @@ public sealed partial class MainWindow : Window
 
     private readonly HubConnection _hub;
     private readonly string _initialPage;
+    private readonly string _instance;
+    /// <summary>Фон, который уже применён: пересоздавать его при каждой настройке незачем.</summary>
+    private string? _backdrop;
+    /// <summary>Откладывает запись размера, пока окно тянут за край.</summary>
+    private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _saveTimer;
     /// <summary>Закрываемся на самом деле, а не сворачиваемся в трей.</summary>
     private bool _reallyClosing;
     /// <summary>Подписки на хаб уже оформлены.</summary>
@@ -31,10 +37,12 @@ public sealed partial class MainWindow : Window
     /// <summary>Создаёт окно.</summary>
     /// <param name="hub">Связь с хабом.</param>
     /// <param name="initialPage">Какую страницу показать первой.</param>
-    public MainWindow(HubConnection hub, string? initialPage)
+    /// <param name="instance">Экземпляр хаба: у каждого свой размер окна.</param>
+    public MainWindow(HubConnection hub, string? initialPage, string instance)
     {
         _hub = hub;
-        _initialPage = initialPage ?? "overview";
+        _instance = instance;
+        _initialPage = initialPage ?? GuiSettings.Current.InitialPage;
         InitializeComponent();
 
         Title = "QuantumHub";
@@ -42,12 +50,29 @@ public sealed partial class MainWindow : Window
         SetTitleBar(AppTitleBar);
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico"));
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(1180, 780));
         AppWindow.Closing += OnClosing;
         LogoImage.Source = new BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "Assets", "logo.png")));
 
         Hwnd = WindowNative.GetWindowHandle(this);
+        WindowPlacement.Apply(AppWindow, Scale, _instance, GuiSettings.Current.RememberWindow);
+        Nav.IsPaneOpen = GuiSettings.Current.InitialPaneOpen;
+        Nav.PaneOpened += (_, _) => RememberPane(true);
+        Nav.PaneClosed += (_, _) => RememberPane(false);
+        GuiSettings.Changed += ApplySettings;
+        ApplySettings();
+        _saveTimer = DispatcherQueue.CreateTimer();
+        _saveTimer.Interval = TimeSpan.FromSeconds(1);
+        _saveTimer.IsRepeating = false;
+        _saveTimer.Tick += (_, _) => SavePlacement();
+        AppWindow.Changed += (_, change) =>
+        {
+            if ((change.DidSizeChange || change.DidPositionChange) && AppWindow.IsVisible) _saveTimer.Start();
+            if (change.DidPresenterChange && GuiSettings.Current.MinimizeToTray &&
+                AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized }) AppWindow.Hide();
+        };
         _hub.StateChanged += OnHubStateChanged;
+        _hub.LanguageChanged += OnLanguageChanged;
+        ApplyLanguage();
         ShowStatus(false);
         Navigate(_initialPage);
     }
@@ -55,12 +80,76 @@ public sealed partial class MainWindow : Window
     /// <summary>Хэндл окна для функций WinAPI.</summary>
     public nint Hwnd { get; }
 
+    /// <summary>Масштаб экрана, на котором окно: 1 это 100%.</summary>
+    private double Scale => GetDpiForWindow(Hwnd) / 96.0;
+
+    /// <summary>Запоминает размер и место окна.</summary>
+    private void SavePlacement()
+    {
+        if (GuiSettings.Current.RememberWindow) WindowPlacement.Capture(AppWindow, Scale, _instance);
+    }
+
+    /// <summary>Запоминает, открыто ли меню.</summary>
+    private static void RememberPane(bool open)
+    {
+        if (GuiSettings.Current.PaneWasOpen != open) GuiSettings.Note(settings => settings with { PaneWasOpen = open });
+    }
+
+    /// <summary>Попросили закрыть интерфейс крестиком.</summary>
+    public event Action? ExitRequested;
+
+    /// <summary>Применяет настройки окна.</summary>
+    private void ApplySettings()
+    {
+        var settings = GuiSettings.Current;
+        AppWindow.TitleBar.PreferredTheme = App.ThemeAtStart switch
+        {
+            "light" => TitleBarTheme.Light,
+            "dark" => TitleBarTheme.Dark,
+            _ => TitleBarTheme.UseDefaultAppMode,
+        };
+
+        if (_backdrop != settings.Backdrop)
+        {
+            _backdrop = settings.Backdrop;
+            SystemBackdrop = settings.Backdrop switch
+            {
+                "micaAlt" => new MicaBackdrop { Kind = Microsoft.UI.Composition.SystemBackdrops.MicaKind.BaseAlt },
+                "acrylic" => new DesktopAcrylicBackdrop(),
+                "none" => null,
+                _ => new MicaBackdrop(),
+            };
+        }
+
+        RootGrid.Background = settings.Backdrop == "none" ? Fluent.Resource("SolidBackgroundFillColorBaseBrush") : null;
+        StatusPill.Visibility = settings.ShowStatus ? Visibility.Visible : Visibility.Collapsed;
+        if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.IsAlwaysOnTop = settings.AlwaysOnTop;
+
+        var showPlugins = settings.MenuPlugins != "none";
+        PluginsHeader.Visibility = showPlugins ? Visibility.Visible : Visibility.Collapsed;
+        if (_hub.IsConnected) _ = RefreshPluginsAsync();
+    }
+
+    /// <summary>Возвращает окну размер и место по умолчанию.</summary>
+    public void ResetPlacement()
+    {
+        WindowPlacement.Forget(_instance);
+        if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.Restore();
+        WindowPlacement.Apply(AppWindow, Scale, _instance, false);
+    }
+
+    /// <summary>Строит страницу заново: например, после сброса настроек.</summary>
+    /// <param name="tag">Тег страницы.</param>
+    public void Reopen(string tag) => Show(tag);
+
     /// <summary>Крестик сворачивает окно в трей. Выход находится в меню трея.</summary>
     private void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         if (_reallyClosing) return;
         args.Cancel = true;
-        AppWindow.Hide();
+        SavePlacement();
+        if (GuiSettings.Current.CloseAction == "exit") ExitRequested?.Invoke();
+        else AppWindow.Hide();
     }
 
     /// <summary>Прячет окно при старте с --minimized.</summary>
@@ -69,6 +158,8 @@ public sealed partial class MainWindow : Window
     /// <summary>Показывает окно и выводит его на передний план.</summary>
     public void ShowAndFocus()
     {
+        // Окно, свёрнутое в трей, осталось свёрнутым: без этого оно появилось бы только на панели задач.
+        if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter) presenter.Restore();
         AppWindow.Show();
         Activate();
         SetForegroundWindow(Hwnd);
@@ -77,6 +168,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Закрывает окно по-настоящему.</summary>
     public void CloseForReal()
     {
+        if (AppWindow.IsVisible) SavePlacement();
         _reallyClosing = true;
         Close();
     }
@@ -100,7 +192,11 @@ public sealed partial class MainWindow : Window
         }
 
         await RefreshPluginsAsync();
-        Navigate(CurrentTag ?? _initialPage);
+
+        // Страница, построенная до подключения, пуста: её надо создать заново, даже если выбор не меняется.
+        var tag = CurrentTag ?? _initialPage;
+        CurrentTag = null;
+        Navigate(tag);
         _ready.TrySetResult();
     }
 
@@ -114,13 +210,42 @@ public sealed partial class MainWindow : Window
         if (PageHost.Content is PluginsPage page) await page.ConfirmAndInstallAsync(path);
     }
 
+    /// <summary>Подписи меню на текущем языке.</summary>
+    private void ApplyLanguage()
+    {
+        foreach (var item in Nav.MenuItems.Concat(Nav.FooterMenuItems).OfType<NavigationViewItem>())
+        {
+            item.Content = item.Tag switch
+            {
+                "overview" => Loc.T("Обзор", "Overview"),
+                "plugins" => Loc.T("Плагины", "Plugins"),
+                "sessions" => Loc.T("Подключения", "Connections"),
+                "logs" => Loc.T("Журнал", "Log"),
+                "settings" => Loc.T("Настройки", "Settings"),
+                _ => item.Content,
+            };
+        }
+
+        PluginsHeader.Content = Loc.T("Установленные", "Installed");
+    }
+
+    /// <summary>Сменился язык: перестраивает всё, что показано.</summary>
+    private async void OnLanguageChanged()
+    {
+        ApplyLanguage();
+        ShowStatus(_hub.IsConnected);
+
+        await RefreshPluginsAsync();
+        if (CurrentTag is { } current) Show(current);
+    }
+
     /// <summary>Обновляет индикатор связи в заголовке.</summary>
     private void ShowStatus(bool connected)
     {
         var color = connected ? Windows.UI.Color.FromArgb(255, 34, 197, 94) : Windows.UI.Color.FromArgb(255, 234, 179, 8);
         StatusDot.Fill = new SolidColorBrush(color);
         StatusPill.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(32, color.R, color.G, color.B));
-        StatusText.Text = connected ? $"подключено · {_hub.Client?.Transport}" : "нет связи с хабом";
+        StatusText.Text = connected ? Loc.T($"подключено · {_hub.Client?.Transport}", $"connected · {_hub.Client?.Transport}") : Loc.T("нет связи с хабом", "no connection to the hub");
     }
 
     /// <summary>Держит установленные плагины в панели навигации, как разделы сайта.</summary>
@@ -132,7 +257,10 @@ public sealed partial class MainWindow : Window
         var existing = Nav.MenuItems.OfType<NavigationViewItem>()
             .Where(item => item.Tag is string tag && tag.StartsWith(PluginTagPrefix, StringComparison.Ordinal))
             .ToDictionary(item => (string)item.Tag);
-        var wanted = list.Plugins.ToDictionary(plugin => PluginTagPrefix + plugin.Manifest.Id);
+        // Выключенный плагин убираем из меню, его страница остаётся доступна из списка плагинов.
+        var mode = GuiSettings.Current.MenuPlugins;
+        var wanted = list.Plugins.Where(plugin => mode == "all" || (mode == "enabled" && plugin.Enabled))
+            .ToDictionary(plugin => PluginTagPrefix + plugin.Manifest.Id);
 
         foreach (var (tag, item) in existing)
         {
@@ -144,6 +272,7 @@ public sealed partial class MainWindow : Window
             if (existing.TryGetValue(tag, out var item))
             {
                 item.InfoBadge = Badge(plugin);
+                item.Content = plugin.Manifest.Name.Length > 0 ? plugin.Manifest.Name : plugin.Manifest.Id;
                 continue;
             }
 
@@ -160,7 +289,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Красная отметка на пункте сломанного плагина.</summary>
-    private static InfoBadge? Badge(PluginInfo plugin) => plugin.State is PluginState.Faulted or PluginState.Blocked
+    private static InfoBadge? Badge(PluginInfo plugin) => GuiSettings.Current.ProblemBadges && plugin.State is PluginState.Faulted or PluginState.Blocked
         ? new InfoBadge { Style = (Style)Application.Current.Resources["CriticalIconInfoBadgeStyle"] }
         : null;
 
@@ -199,12 +328,13 @@ public sealed partial class MainWindow : Window
     private void Show(string tag)
     {
         CurrentTag = tag;
+        if (tag != "settings" && GuiSettings.Current.LastPage != tag) GuiSettings.Note(settings => settings with { LastPage = tag });
         PageHost.Content = tag switch
         {
             "plugins" => new PluginsPage(_hub, this),
             "sessions" => new SessionsPage(_hub),
             "logs" => new LogsPage(_hub),
-            "settings" => new SettingsPage(_hub),
+            "settings" => new SettingsPage(_hub, this),
             _ when tag.StartsWith(PluginTagPrefix, StringComparison.Ordinal) => new PluginPage(_hub, tag[PluginTagPrefix.Length..]),
             _ => new OverviewPage(_hub),
         };
@@ -216,4 +346,7 @@ public sealed partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(nint window);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(nint window);
 }

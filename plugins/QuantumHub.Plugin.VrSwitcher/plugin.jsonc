@@ -6,7 +6,7 @@
   "description": "Когда запущен SteamVR, переключает наушники и микрофон на VR-гарнитуру, а после выхода возвращает как было.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.VrSwitcher.dll" },
-  "provides": [ { "name": "vr.session", "version": "1.0.0" } ],
+  "provides": [ { "name": "vr.session", "version": "1.1.0" } ],
   "dependencies": [
     { "capability": "audio.devices", "version": ">=1.0.0" },
     { "capability": "user.activity", "version": ">=1.0.0" }
@@ -70,5 +70,45 @@
       "min": 1,
       "max": 10
     }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "description": "While SteamVR runs, switches headphones and microphone to the VR headset, then puts everything back.",
+      "groups": {
+        "Гарнитура": "Headset",
+        "Свои устройства": "Custom devices",
+        "После VR": "After VR",
+        "Проверка": "Checking"
+      },
+      "settings": {
+        "preset": {
+          "title": "Headset",
+          "description": "Pico and Meta find their devices themselves. Custom uses the two fields below."
+        },
+        "autoSwitch": {
+          "title": "Switch automatically",
+          "description": "When SteamVR starts and closes."
+        },
+        "customPlayback": {
+          "title": "Headphones",
+          "description": "Part of the output device name."
+        },
+        "customRecording": {
+          "title": "Microphone",
+          "description": "Part of the input device name."
+        },
+        "pcPlayback": {
+          "title": "Headphones",
+          "description": "Empty means return to what was used before VR."
+        },
+        "pcRecording": {
+          "title": "Microphone",
+          "description": "Empty means return to what was used before VR."
+        },
+        "pollSeconds": {
+          "title": "Check every, seconds"
+        }
+      }
+    }
+  }
 }

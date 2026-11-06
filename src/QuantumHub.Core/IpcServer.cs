@@ -27,7 +27,12 @@ public sealed class IpcServer(Hub hub, HubOptions options) : IDisposable
     private static readonly TimeSpan HelloTimeout = TimeSpan.FromSeconds(10);
 
     /// <summary>Текущие сессии.</summary>
+    /// <summary>Сколько подключений помнить.</summary>
+    private const int MaxHistory = 500;
+
     private readonly ConcurrentDictionary<string, Session> _sessions = new();
+    /// <summary>Подключения за время работы хаба, по порядку.</summary>
+    private readonly List<(string SessionId, SessionHistoryEntry Entry)> _history = [];
     private readonly CancellationTokenSource _cts = new();
     private PipeListener? _pipe;
     private TcpListener? _tcp;
@@ -201,6 +206,7 @@ public sealed class IpcServer(Hub hub, HubOptions options) : IDisposable
     private void Register(Session session)
     {
         _sessions[session.SessionId] = session;
+        Remember(session);
         hub.Router.Register(session.Address, session);
         hub.Router.Register(session.Id, session);
         session.Closed += OnSessionClosed;
@@ -210,11 +216,47 @@ public sealed class IpcServer(Hub hub, HubOptions options) : IDisposable
     private void OnSessionClosed(Session session)
     {
         _sessions.TryRemove(session.SessionId, out _);
+        MarkDisconnected(session);
         hub.Router.Unregister(session.Address, session);
         hub.Router.Unregister(session.Id, session);
         hub.Router.UnsubscribeAll(session);
         hub.Log.Info($"Disconnected: {session.Id}");
         hub.Router.Publish(Hub.ConfigOwner, Hub.SessionDisconnectedTopic, HubPayload.Proto(session.ToInfo()));
+    }
+
+    /// <summary>Записывает подключение в историю.</summary>
+    private void Remember(Session session)
+    {
+        var info = session.ToInfo();
+        lock (_history)
+        {
+            _history.Add((session.SessionId, new SessionHistoryEntry
+            {
+                DisplayName = info.DisplayName,
+                ClientId = info.ClientId,
+                Role = info.Role,
+                ConnectedUnixMs = info.ConnectedUnixMs,
+            }));
+            if (_history.Count > MaxHistory) _history.RemoveAt(0);
+        }
+    }
+
+    /// <summary>Отмечает в истории время отключения.</summary>
+    private void MarkDisconnected(Session session)
+    {
+        lock (_history)
+        {
+            var index = _history.FindLastIndex(item => item.SessionId == session.SessionId);
+            if (index >= 0) _history[index].Entry.DisconnectedUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        }
+    }
+
+    /// <summary>Подключения за время работы хаба, сначала самые новые.</summary>
+    public SessionHistory History()
+    {
+        var history = new SessionHistory();
+        lock (_history) history.Entries.Add(Enumerable.Reverse(_history).Select(item => item.Entry.Clone()));
+        return history;
     }
 
     /// <summary>Текущие подключения.</summary>

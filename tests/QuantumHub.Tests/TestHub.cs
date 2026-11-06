@@ -85,6 +85,7 @@ public sealed class TestHub : IAsyncDisposable
     {
         Hub = new Hub(new HubOptions
         {
+            Language = "ru",
             RootDir = Path.Combine(Root, "app"),
             DataDir = DataDir,
             Endpoint = Endpoint,

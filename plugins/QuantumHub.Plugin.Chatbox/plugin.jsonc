@@ -62,6 +62,24 @@
     { "key": "modTime", "type": "bool", "group": "Что показывать", "title": "Текущее время", "default": true },
     { "key": "modMedia", "type": "bool", "group": "Что показывать", "title": "Музыка", "default": true },
     {
+      "key": "windowSource",
+      "type": "choice",
+      "group": "Оформление",
+      "title": "Что писать про окно",
+      "description": "Заголовок окна увидят все в игре, а в нём бывают названия файлов и переписок.",
+      "options": [ "process", "title", "both" ],
+      "optionLabels": { "process": "Имя процесса", "title": "Заголовок окна", "both": "Процесс и заголовок" },
+      "default": "process"
+    },
+    {
+      "key": "template",
+      "type": "list",
+      "group": "Шаблон",
+      "title": "Свой шаблон",
+      "description": "Если заполнен, заменяет выбор строк выше. Подстановки: {status} {window} {process} {title} {vr} {time} {stats} {cpu} {gpu} {ram} {vram} {song} {track} {artist} {progress} {position} {duration}. Строка, где все подстановки пусты, не показывается.",
+      "default": []
+    },
+    {
       "key": "vrText",
       "type": "string",
       "group": "Оформление",
@@ -87,5 +105,85 @@
     { "key": "showGpu", "type": "bool", "group": "Загрузка компьютера", "title": "Видеокарта", "default": true },
     { "key": "showRam", "type": "bool", "group": "Загрузка компьютера", "title": "Оперативная память", "default": true },
     { "key": "showVram", "type": "bool", "group": "Загрузка компьютера", "title": "Видеопамять", "default": true }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "description": "Shows your status, active window, computer load, time and music in the VRChat chatbox. While the game runs, a small window is open for status and messages.",
+      "groups": {
+        "Отправка": "Sending",
+        "Что показывать": "What to show",
+        "Оформление": "Style",
+        "Шаблон": "Template",
+        "Загрузка компьютера": "Computer load"
+      },
+      "settings": {
+        "sending": {
+          "title": "Send to VRChat",
+          "description": "Only while the game is running."
+        },
+        "intervalSeconds": {
+          "title": "Update every, seconds",
+          "description": "VRChat will not show it more often anyway."
+        },
+        "chatHoldSeconds": {
+          "title": "Hold a message for, seconds",
+          "description": "How long a sent message stays instead of the usual lines."
+        },
+        "openPanel": {
+          "title": "Open the mini window with the game"
+        },
+        "modStatus": {
+          "title": "Personal status"
+        },
+        "modWindow": {
+          "title": "Window activity",
+          "description": "Shows that you are in VR, otherwise the focused app."
+        },
+        "modComponent": {
+          "title": "Computer load"
+        },
+        "modTime": {
+          "title": "Current time"
+        },
+        "modMedia": {
+          "title": "Music"
+        },
+        "windowSource": {
+          "title": "What to show about the window",
+          "description": "Everyone in the game sees the window title, and titles can contain file names and chats.",
+          "options": {
+            "process": "Process name",
+            "title": "Window title",
+            "both": "Process and title"
+          }
+        },
+        "template": {
+          "title": "Custom template",
+          "description": "When filled, replaces the line selection above. Placeholders: {status} {window} {process} {title} {vr} {time} {stats} {cpu} {gpu} {ram} {vram} {song} {track} {artist} {progress} {position} {duration}. A line whose placeholders are all empty is not shown."
+        },
+        "vrText": {
+          "title": "Text in VR"
+        },
+        "timeFormat": {
+          "title": "Time format",
+          "description": "For example HH:mm or hh:mm tt."
+        },
+        "showProgress": {
+          "title": "Track progress bar"
+        },
+        "showCpu": {
+          "title": "Processor"
+        },
+        "showGpu": {
+          "title": "Graphics card"
+        },
+        "showRam": {
+          "title": "Memory"
+        },
+        "showVram": {
+          "title": "Video memory"
+        }
+      }
+    }
+  }
 }

@@ -86,14 +86,14 @@ public sealed class NotificationsPlugin : IHubPlugin, IUiProvider
     /// <inheritdoc/>
     public IEnumerable<UiPage> GetPages()
     {
-        yield return Ui.Page("main", "Проверка", "E7E7",
-            Ui.Text("Настройки внешнего вида лежат на соседней вкладке."),
-            Ui.Button("test", "Показать пробное уведомление", accent: true));
+        yield return Ui.Page("main", Loc.T("Проверка", "Test"), "E7E7",
+            Ui.Text(Loc.T("Настройки внешнего вида лежат на соседней вкладке.", "Appearance settings are on the next tab.")),
+            Ui.Button("test", Loc.T("Показать пробное уведомление", "Show a test notification"), accent: true));
     }
 
     /// <inheritdoc/>
     public void OnUiEvent(UiEvent uiEvent)
     {
-        if (uiEvent.NodeId == "test") Show(new NotificationRequest("test", "QuantumHub", "Так выглядит уведомление", null, null));
+        if (uiEvent.NodeId == "test") Show(new NotificationRequest("test", "QuantumHub", Loc.T("Так выглядит уведомление", "This is how a notification looks"), null, null));
     }
 }

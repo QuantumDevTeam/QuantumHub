@@ -22,3 +22,13 @@ Exe хаба. Намеренно почти пустой: вся логика в
 ```bash
 QuantumHub.Service.exe --console --instance dev --data ./dev-data
 ```
+
+## Настройки
+
+Лежат в `%APPDATA%\QuantumHub\config\hub.jsonc` и меняются на странице настроек:
+
+| Ключ | Что это | По умолчанию |
+|---|---|---|
+| `language` | `auto`, `ru` или `en` | `auto` |
+| `logLevel` | Что записывать: `debug`, `info`, `warning` или `error` | `debug` |
+| `logRetentionDays` | Сколько дней хранить файлы журнала, `0` значит всегда | `0` |

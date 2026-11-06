@@ -1,3 +1,5 @@
+using QuantumHub.Contracts.Ui;
+
 namespace QuantumHub.Plugin.VrSwitcher;
 
 /// <summary>
@@ -40,7 +42,7 @@ public sealed class VrAudioEngine(
     public bool OnHeadset => _applied;
 
     /// <summary>Что сейчас происходит, для показа пользователю.</summary>
-    public string Status { get; private set; } = "Ждём SteamVR";
+    public string Status { get; private set; } = Loc.T("Ждём SteamVR", "Waiting for SteamVR");
 
     /// <summary>Сессия началась или закончилась.</summary>
     public event Action<bool>? SessionChanged;
@@ -73,7 +75,7 @@ public sealed class VrAudioEngine(
                     SessionActive = true;
                     sessionChange = true;
                     _applyPending = settings.AutoSwitch;
-                    if (!settings.AutoSwitch) SetStatus("SteamVR запущен, автопереключение выключено");
+                    if (!settings.AutoSwitch) SetStatus(Loc.T("SteamVR запущен, автопереключение выключено", "SteamVR is running, auto switching is off"));
                 }
             }
             else if (SessionActive && ++_missedPolls >= settings.ExitGracePolls)
@@ -82,7 +84,7 @@ public sealed class VrAudioEngine(
                 sessionChange = false;
                 _applyPending = false;
                 if (_applied) await RestoreAsync(settings);
-                else SetStatus("Ждём SteamVR");
+                else SetStatus(Loc.T("Ждём SteamVR", "Waiting for SteamVR"));
             }
 
             if (_applyPending) await ApplyAsync(settings);
@@ -155,8 +157,8 @@ public sealed class VrAudioEngine(
             var recording = VrAudioPreset.Find(await audio.ListAsync(AudioFlow.Recording), settings.Preset.Recording);
             if (playback is null || recording is null)
             {
-                var missing = playback is null ? recording is null ? "наушники и микрофон" : "наушники" : "микрофон";
-                SetStatus($"{settings.Preset.Name}: не найдены {missing}, ждём");
+                var missing = playback is null ? recording is null ? Loc.T("наушники и микрофон", "headphones and microphone") : Loc.T("наушники", "headphones") : Loc.T("микрофон", "microphone");
+                SetStatus(Loc.T($"{settings.Preset.Name}: не найдены {missing}, ждём", $"{settings.Preset.Name}: {missing} not found, waiting"));
                 _applyPending = true;
                 return;
             }
@@ -169,13 +171,13 @@ public sealed class VrAudioEngine(
 
             _applied = true;
             _applyPending = false;
-            SetStatus($"Звук на гарнитуре: {playback.Name}, {recording.Name}");
+            SetStatus(Loc.T($"Звук на гарнитуре: {playback.Name}, {recording.Name}", $"Sound on the headset: {playback.Name}, {recording.Name}"));
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             // Устройство могло пропасть прямо сейчас. Следующая проверка попробует снова.
             _applyPending = true;
-            SetStatus($"Не удалось переключить звук: {ex.Message}");
+            SetStatus(Loc.T($"Не удалось переключить звук: {ex.Message}", $"Could not switch sound: {ex.Message}"));
         }
     }
 
@@ -199,12 +201,12 @@ public sealed class VrAudioEngine(
             if (recording is not null) await audio.SetDefaultAsync(recording.Id);
 
             SetStatus(playback is null && recording is null
-                ? "Некуда возвращать звук: укажи устройства в настройках"
-                : "Звук возвращён");
+                ? Loc.T("Некуда возвращать звук: укажи устройства в настройках", "Nowhere to return sound to: set devices in the settings")
+                : Loc.T("Звук возвращён", "Sound returned"));
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            SetStatus($"Не удалось вернуть звук: {ex.Message}");
+            SetStatus(Loc.T($"Не удалось вернуть звук: {ex.Message}", $"Could not return sound: {ex.Message}"));
         }
         finally
         {

@@ -61,7 +61,7 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
         context.Bus.Handle("chatbox.chat.send", async (request, _) =>
         {
             if (!await _engine.SendMessageAsync(request.Payload.AsText(), DateTimeOffset.Now))
-                throw new HubCallException(StatusCode.FailedPrecondition, "Сообщение не отправлено: VRChat не запущен или отправка выключена.");
+                throw new HubCallException(StatusCode.FailedPrecondition, Loc.T("Сообщение не отправлено: VRChat не запущен или отправка выключена.", "Message not sent: VRChat is not running or sending is off."));
             return HubPayload.Empty;
         });
         context.Bus.Handle("chatbox.sending.set", (request, _) =>
@@ -102,7 +102,7 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
     private void SetGameRunning(bool running)
     {
         _engine.GameRunning = running;
-        _context.Ui.Set("game", running ? "запущен" : "не запущен");
+        _context.Ui.Set("game", running ? Loc.T("запущен", "running") : Loc.T("не запущен", "not running"));
         if (running && _context.Config.Get("openPanel", true)) _panel.Ensure();
         if (!running) _panel.Stop();
         Publish();
@@ -154,7 +154,9 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
                 config.Get("showCpu", true),
                 config.Get("showGpu", true),
                 config.Get("showRam", true),
-                config.Get("showVram", true)));
+                config.Get("showVram", true),
+                config.Get("windowSource", "process")!,
+                config.Get("template", new List<string>())));
     }
 
     private void OnConfigChanged(string key)
@@ -192,12 +194,12 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
     /// <inheritdoc/>
     public IEnumerable<UiPage> GetPages()
     {
-        yield return Ui.Page("main", "Чатбокс", "E8BD",
+        yield return Ui.Page("main", Loc.T("Чатбокс", "Chatbox"), "E8BD",
             Ui.KeyValue("VRChat", "game"),
-            Ui.Card("Сейчас в чатбоксе", null, Ui.BoundText("preview", "mono")),
-            Ui.Card("Личный статус", "Enter сохраняет.", Ui.TextBox("status", "Что у тебя сейчас?").Bind("value", "config:status")),
-            Ui.Card("Сообщение", "Enter отправляет.", Ui.TextBox("chat", "Написать в чат")),
-            Ui.Button("panel", "Открыть мини-окно", accent: true));
+            Ui.Card(Loc.T("Сейчас в чатбоксе", "In the chatbox now"), null, Ui.BoundText("preview", "mono")),
+            Ui.Card(Loc.T("Личный статус", "Personal status"), Loc.T("Enter сохраняет.", "Enter saves."), Ui.TextBox("status", Loc.T("Что у тебя сейчас?", "What's up?")).Bind("value", "config:status")),
+            Ui.Card(Loc.T("Сообщение", "Message"), Loc.T("Enter отправляет.", "Enter sends."), Ui.TextBox("chat", Loc.T("Написать в чат", "Write to chat"))),
+            Ui.Button("panel", Loc.T("Открыть мини-окно", "Open the mini window"), accent: true));
     }
 
     /// <inheritdoc/>
@@ -219,7 +221,7 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
     {
         private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(2);
 
-        private sealed record Window(string Process);
+        private sealed record Window(string Process, string Title);
 
         private sealed record VrState(bool Active);
 
@@ -229,7 +231,7 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
             var vr = modules.Window ? await TryAsync<VrState>("cap:user.activity", "vr.get") : null;
             var stats = modules.Component ? await TryAsync<StatsInfo>("cap:system.stats", "stats.get") : null;
             var media = modules.Media ? await TryAsync<MediaInfo>("cap:media.player", "player.current") : null;
-            return new ChatInputs(status, window?.Process, vr?.Active == true, stats, media, DateTimeOffset.Now);
+            return new ChatInputs(status, window?.Process, vr?.Active == true, stats, media, DateTimeOffset.Now, window?.Title);
         }
 
         private async Task<T?> TryAsync<T>(string target, string method) where T : class

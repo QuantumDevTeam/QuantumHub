@@ -122,7 +122,7 @@ public sealed class VrChatOscPlugin : IHubPlugin, IUiProvider
     {
         if (!_context.Config.Get("receive", true))
         {
-            _context.Ui.Set("receive", "выключен");
+            _context.Ui.Set("receive", Loc.T("выключен", "off"));
             return;
         }
 
@@ -132,13 +132,13 @@ public sealed class VrChatOscPlugin : IHubPlugin, IUiProvider
             var client = new UdpClient(new IPEndPoint(IPAddress.Loopback, port));
             _stop = new CancellationTokenSource();
             _listener = Task.Run(() => ReceiveAsync(client, _stop.Token), CancellationToken.None);
-            _context.Ui.Set("receive", $"слушаем порт {port}");
+            _context.Ui.Set("receive", Loc.T($"слушаем порт {port}", $"listening on port {port}"));
         }
         catch (SocketException)
         {
             // Порт приёма может держать только одна программа. Отправка от этого не страдает.
             _context.Logger.Warning($"Порт {port} занят другой программой, приём выключен.");
-            _context.Ui.Set("receive", $"порт {port} занят другой программой");
+            _context.Ui.Set("receive", Loc.T($"порт {port} занят другой программой", $"port {port} is used by another program"));
         }
     }
 
@@ -196,11 +196,11 @@ public sealed class VrChatOscPlugin : IHubPlugin, IUiProvider
     public IEnumerable<UiPage> GetPages()
     {
         PushState();
-        yield return Ui.Page("main", "Связь", "E704",
-            Ui.KeyValue("Приём", "receive"),
-            Ui.KeyValue("Отправлено сообщений", "sent"),
-            Ui.KeyValue("Получено сообщений", "received"),
-            Ui.KeyValue("Текущий аватар", "avatar"));
+        yield return Ui.Page("main", Loc.T("Связь", "Link"), "E704",
+            Ui.KeyValue(Loc.T("Приём", "Receiving"), "receive"),
+            Ui.KeyValue(Loc.T("Отправлено сообщений", "Messages sent"), "sent"),
+            Ui.KeyValue(Loc.T("Получено сообщений", "Messages received"), "received"),
+            Ui.KeyValue(Loc.T("Текущий аватар", "Current avatar"), "avatar"));
     }
 
     /// <inheritdoc/>

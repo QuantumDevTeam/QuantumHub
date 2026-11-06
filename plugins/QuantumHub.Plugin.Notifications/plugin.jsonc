@@ -44,5 +44,28 @@
       "min": 0,
       "max": 400
     }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "description": "Small popups over the screen. Any plugin can use them.",
+      "groups": {
+        "Показ": "Display",
+        "Положение": "Position"
+      },
+      "settings": {
+        "durationSeconds": {
+          "title": "Show for, seconds"
+        },
+        "opacity": {
+          "title": "Opacity, %"
+        },
+        "marginRight": {
+          "title": "Right margin"
+        },
+        "marginTop": {
+          "title": "Top margin"
+        }
+      }
+    }
+  }
 }

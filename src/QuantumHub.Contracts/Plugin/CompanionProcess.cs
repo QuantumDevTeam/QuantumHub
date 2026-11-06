@@ -40,7 +40,7 @@ public sealed class CompanionProcess(string executable, IPluginContext context) 
                 return;
             }
 
-            var start = new ProcessStartInfo(executable, $"--instance \"{context.HubInstance}\"")
+            var start = new ProcessStartInfo(executable, $"--instance \"{context.HubInstance}\" --language {Ui.Loc.Language}")
             {
                 UseShellExecute = false,
                 WorkingDirectory = Path.GetDirectoryName(executable),

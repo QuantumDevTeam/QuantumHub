@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- Предупреждение про ImageSharp из OpenVR.NET: эта сборка в программе не используется. -->
+    <NuGetAudit>false</NuGetAudit>
     <!-- Как у плагина Music: ему нужны API WinRT. -->
     <TargetFramework>$(QhWinUi)</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
@@ -28,6 +30,8 @@
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.Music/QuantumHub.Plugin.Music.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.Discord/QuantumHub.Plugin.Discord.csproj" />
     <ProjectReference Include="../../src/QuantumHub.Setup/QuantumHub.Setup.csproj" />
+    <Compile Include="../../src/QuantumHub.Gui/Services/GuiSettings.cs" Link="Linked/GuiSettings.cs" />
+    <ProjectReference Include="../../companions/QuantumHub.VrDashboard/QuantumHub.VrDashboard.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.VrChatOsc/QuantumHub.Plugin.VrChatOsc.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.Chatbox/QuantumHub.Plugin.Chatbox.csproj" />
     <ProjectReference Include="../../plugins/QuantumHub.Plugin.Notifications/QuantumHub.Plugin.Notifications.csproj" ReferenceOutputAssembly="false" />

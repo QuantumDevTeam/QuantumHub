@@ -48,5 +48,36 @@
       "description": "Пока Discord не запущен, плагин просто ждёт его.",
       "default": true
     }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "description": "Connects to the running Discord: mute, current channel, members, ping, Rich Presence. Other plugins use it.",
+      "groups": {
+        "Приложение Discord": "Discord application",
+        "Подключение": "Connection"
+      },
+      "settings": {
+        "clientId": {
+          "title": "Client ID",
+          "description": "From your application on discord.com/developers. While empty, the plugin does not connect to Discord."
+        },
+        "clientSecret": {
+          "title": "Client Secret",
+          "description": "Only needed for voice and channel. Rich Presence works without it."
+        },
+        "redirectUri": {
+          "title": "Redirect URI",
+          "description": "The same address must be set in the OAuth2 settings of the application."
+        },
+        "scopes": {
+          "title": "Scopes",
+          "description": "One per line. Changes apply at the next authorization."
+        },
+        "autoConnect": {
+          "title": "Connect automatically",
+          "description": "While Discord is not running, the plugin just waits for it."
+        }
+      }
+    }
+  }
 }

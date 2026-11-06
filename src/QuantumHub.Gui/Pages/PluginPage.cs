@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -15,7 +16,7 @@ public sealed class PluginPage : HubPage, IPluginUiHost
     private readonly string _pluginId;
     /// <summary>Здесь показывается содержимое вкладки.</summary>
     private readonly ContentControl _host = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch };
-    private readonly StackPanel _column = new() { Spacing = 16, Padding = new Thickness(36, 24, 36, 36), MaxWidth = 1100 };
+    private readonly StackPanel _column = new() { Spacing = 16, Padding = new Thickness(36, 24, 36, 36), MaxWidth = 1100, HorizontalAlignment = HorizontalAlignment.Stretch };
     /// <summary>Текущее состояние плагина: вкладка, открытая позже, видит свежие значения.</summary>
     private readonly Dictionary<string, string> _state = new();
     /// <summary>Рендерер открытой вкладки.</summary>
@@ -30,7 +31,8 @@ public sealed class PluginPage : HubPage, IPluginUiHost
     public PluginPage(HubConnection hub, string pluginId) : base(hub)
     {
         _pluginId = pluginId;
-        Content = new ScrollViewer { Content = _column };
+        _column.MaxWidth = Fluent.PageMaxWidth;
+        Content = Fluent.Scroll(_column);
     }
 
     string IPluginUiHost.PluginId => _pluginId;
@@ -114,7 +116,7 @@ public sealed class PluginPage : HubPage, IPluginUiHost
     /// <summary>Предупреждение, если плагин не работает.</summary>
     private InfoBar NotRunningBar(PluginInfo plugin)
     {
-        var start = new Button { Content = "Запустить" };
+        var start = new Button { Content = Loc.T("Запустить", "Start") };
         start.Click += async (_, _) =>
         {
             if (await Hub.TryRunAsync("hub.plugins.restart", new PluginRef { Id = _pluginId }) is { } error) ShowError(_column, error);
@@ -125,8 +127,8 @@ public sealed class PluginPage : HubPage, IPluginUiHost
             IsOpen = true,
             IsClosable = false,
             Severity = plugin.State is PluginState.Faulted or PluginState.Blocked ? InfoBarSeverity.Error : InfoBarSeverity.Informational,
-            Title = plugin.Error.Length > 0 ? plugin.Error : "Плагин сейчас не запущен",
-            Message = plugin.Manifest.Activation == "onDemand" ? "Он запустится сам, когда кому-нибудь понадобится." : string.Empty,
+            Title = plugin.Error.Length > 0 ? plugin.Error : Loc.T("Плагин сейчас не запущен", "The plugin is not running"),
+            Message = plugin.Manifest.Activation == "onDemand" ? Loc.T("Он запустится сам, когда кому-нибудь понадобится.", "It starts by itself when something needs it.") : string.Empty,
             ActionButton = plugin.Enabled ? start : null,
         };
     }
@@ -171,7 +173,7 @@ public sealed class PluginPage : HubPage, IPluginUiHost
         catch (Exception ex)
         {
             App.Log($"Native UI of {_pluginId}: {ex}");
-            ShowError(_column, $"Не удалось загрузить интерфейс плагина: {ex.Message}");
+            ShowError(_column, Loc.T($"Не удалось загрузить интерфейс плагина: {ex.Message}", $"Could not load the plugin interface: {ex.Message}"));
         }
     }
 
@@ -186,7 +188,7 @@ public sealed class PluginPage : HubPage, IPluginUiHost
         {
             // Ошибка плагина остаётся на странице плагина.
             App.Log($"Page of {_pluginId}: {ex}");
-            return new InfoBar { IsOpen = true, IsClosable = false, Severity = InfoBarSeverity.Error, Title = "Страница плагина упала", Message = ex.Message };
+            return new InfoBar { IsOpen = true, IsClosable = false, Severity = InfoBarSeverity.Error, Title = Loc.T("Страница плагина упала", "The plugin page crashed"), Message = ex.Message };
         }
     }
 

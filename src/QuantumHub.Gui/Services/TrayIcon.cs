@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Runtime.InteropServices;
 
 namespace QuantumHub.Gui.Services;
@@ -15,6 +16,7 @@ public sealed class TrayIcon : IDisposable
     private const int WmApp = 0x8000;
     private const int WmTray = WmApp + 1;
     private const int WmLButtonUp = 0x0202;
+    private const int WmLButtonDblClk = 0x0203;
     private const int WmRButtonUp = 0x0205;
     private const int WmNull = 0;
     private const uint NimAdd = 0;
@@ -106,7 +108,8 @@ public sealed class TrayIcon : IDisposable
         {
             switch ((int)lParam & 0xFFFF)
             {
-                case WmLButtonUp:
+                case WmLButtonUp when !GuiSettings.Current.TrayDoubleClick:
+                case WmLButtonDblClk when GuiSettings.Current.TrayDoubleClick:
                     _open();
                     break;
                 case WmRButtonUp:
@@ -124,10 +127,10 @@ public sealed class TrayIcon : IDisposable
     private void ShowMenu()
     {
         var menu = CreatePopupMenu();
-        AppendMenu(menu, MfString, CommandOpen, "Открыть QuantumHub");
+        AppendMenu(menu, MfString, CommandOpen, Loc.T("Открыть QuantumHub", "Open QuantumHub"));
         AppendMenu(menu, MfSeparator, 0, null);
-        AppendMenu(menu, MfString, CommandQuit, "Закрыть интерфейс (хаб продолжит работать)");
-        AppendMenu(menu, MfString, CommandQuitAll, "Завершить хаб и выйти");
+        AppendMenu(menu, MfString, CommandQuit, Loc.T("Закрыть интерфейс (хаб продолжит работать)", "Close the interface (the hub keeps running)"));
+        AppendMenu(menu, MfString, CommandQuitAll, Loc.T("Завершить хаб и выйти", "Stop the hub and exit"));
 
         GetCursorPos(out var point);
         // Без этого меню не закрылось бы по щелчку в стороне.

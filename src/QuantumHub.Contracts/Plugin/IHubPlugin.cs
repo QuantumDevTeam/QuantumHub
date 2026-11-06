@@ -31,6 +31,9 @@ public interface IUiProvider
     /// <summary>Реакция на действие пользователя: нажатие кнопки или изменение значения.</summary>
     /// <param name="uiEvent">Что произошло.</param>
     void OnUiEvent(UiEvent uiEvent);
+
+    /// <summary>Сменился язык. Здесь плагин заново отправляет тексты, которые уже показал через состояние.</summary>
+    void OnLanguageChanged() { }
 }
 
 /// <summary>Отмечает класс плагина, чтобы хаб нашёл его без поля "service.type" в манифесте.</summary>

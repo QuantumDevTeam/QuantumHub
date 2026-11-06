@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -23,7 +24,7 @@ public sealed class ActivityPage : INativePluginPage
     private const int MaxRows = 50;
 
     /// <inheritdoc/>
-    public string Title => "Лента";
+    public string Title => Loc.T("Лента", "Feed");
     /// <inheritdoc/>
     public string Icon => "E81C";
 
@@ -34,7 +35,7 @@ public sealed class ActivityPage : INativePluginPage
         var root = new StackPanel { Spacing = 12 };
         root.Children.Add(new TextBlock
         {
-            Text = "Этот экран — настоящий WinUI из отдельной DLL плагина. Переключись на другое окно, и тут появится строка.",
+            Text = Loc.T("Этот экран — настоящий WinUI из отдельной DLL плагина. Переключись на другое окно, и тут появится строка.", "This screen is real WinUI from a separate plugin DLL. Switch to another window and a line appears here."),
             TextWrapping = TextWrapping.Wrap,
             Foreground = Resource("TextFillColorSecondaryBrush"),
         });

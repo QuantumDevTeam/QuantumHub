@@ -12,6 +12,10 @@ namespace QuantumHub.Plugin.VrSwitcher;
 /// <param name="Status">Что сейчас происходит, для показа человеку.</param>
 public sealed record VrSession(bool Active, string Preset, bool OnHeadset, string Status);
 
+/// <summary>Запрос audio.target.set.</summary>
+/// <param name="Target">"headset" или "desktop".</param>
+public sealed record AudioTarget(string Target);
+
 /// <summary>
 /// Определяет SteamVR и переводит звук на гарнитуру. Здесь только связь с хабом: таймер, настройки и
 /// интерфейс. Вся логика лежит в <see cref="VrAudioEngine"/>, а сам звук в возможности audio.devices.
@@ -44,6 +48,22 @@ public sealed class VrSwitcherPlugin : IHubPlugin, IUiProvider
         context.Config.Changed += OnConfigChanged;
 
         context.Bus.Handle("session.get", (_, _) => ValueTask.FromResult(HubPayload.Json(Session())));
+        context.Bus.Handle("audio.target.set", async (request, _) =>
+        {
+            switch (request.Payload.AsJson<AudioTarget>()?.Target)
+            {
+                case "headset":
+                    await _engine.ApplyNowAsync();
+                    break;
+                case "desktop":
+                    await _engine.RestoreNowAsync();
+                    break;
+                default:
+                    throw new HubCallException(StatusCode.InvalidArgument, "Target must be \"headset\" or \"desktop\".");
+            }
+
+            return HubPayload.Json(Session());
+        });
 
         await _probe.StartAsync(context.Bus, token);
         _subscription = await context.Bus.SubscribeAsync("audio.default.changed", e => ShowCurrent(e.Payload), token);
@@ -113,13 +133,13 @@ public sealed class VrSwitcherPlugin : IHubPlugin, IUiProvider
     private void ShowCurrent(HubPayload payload)
     {
         var current = payload.AsJson<Current>();
-        _context.Ui.Set("playback", current?.Playback?.Name ?? "нет");
-        _context.Ui.Set("recording", current?.Recording?.Name ?? "нет");
+        _context.Ui.Set("playback", current?.Playback?.Name ?? Loc.T("нет", "none"));
+        _context.Ui.Set("recording", current?.Recording?.Name ?? Loc.T("нет", "none"));
     }
 
     private void PushState()
     {
-        _context.Ui.Set("session", _engine.SessionActive ? "запущен" : "не запущен");
+        _context.Ui.Set("session", _engine.SessionActive ? Loc.T("запущен", "running") : Loc.T("не запущен", "not running"));
         _context.Ui.Set("status", _engine.Status);
     }
 
@@ -128,12 +148,12 @@ public sealed class VrSwitcherPlugin : IHubPlugin, IUiProvider
     {
         yield return Ui.Page("main", "VR", "E7F6",
             Ui.KeyValue("SteamVR", "session"),
-            Ui.KeyValue("Наушники сейчас", "playback"),
-            Ui.KeyValue("Микрофон сейчас", "recording"),
-            Ui.Card("Состояние", null, Ui.BoundText("status")),
+            Ui.KeyValue(Loc.T("Наушники сейчас", "Current output"), "playback"),
+            Ui.KeyValue(Loc.T("Микрофон сейчас", "Current microphone"), "recording"),
+            Ui.Card(Loc.T("Состояние", "Status"), null, Ui.BoundText("status")),
             Ui.Row(
-                Ui.Button("apply", "На гарнитуру", accent: true),
-                Ui.Button("restore", "Вернуть обычный звук")));
+                Ui.Button("apply", Loc.T("На гарнитуру", "To headset"), accent: true),
+                Ui.Button("restore", Loc.T("Вернуть обычный звук", "Back to desktop sound"))));
     }
 
     /// <inheritdoc/>

@@ -32,6 +32,30 @@ message PluginManifest {
   repeated Dependency dependencies = 11;
   // Настройки, для которых хаб сам построит страницу.
   repeated SettingDescriptor settings = 12;
+  // Переводы: код языка и текст на нём. Основной текст манифеста показывается, если перевода нет.
+  map<string, ManifestLocale> locales = 13;
+}
+
+// Перевод манифеста на один язык.
+message ManifestLocale {
+  // Имя для показа.
+  string name = 1;
+  // Описание для показа.
+  string description = 2;
+  // Названия групп настроек: как в манифесте и перевод.
+  map<string, string> groups = 3;
+  // Тексты настроек по их ключам.
+  map<string, SettingLocale> settings = 4;
+}
+
+// Перевод одной настройки.
+message SettingLocale {
+  // Название.
+  string title = 1;
+  // Пояснение.
+  string description = 2;
+  // Подписи вариантов: значение и подпись.
+  map<string, string> options = 3;
 }
 
 // Точка входа в плагин.
@@ -114,6 +138,8 @@ message SettingDescriptor {
   double min = 7;
   // Верхняя граница для типа "number". Если она выше min, будет показан ползунок.
   double max = 8;
+  // Подписи вариантов типа "choice": значение и подпись. Без подписи показывается само значение.
+  map<string, string> option_labels = 10;
   // Название группы. Настройки одной группы идут вместе под общим заголовком.
   string group = 9;
 }

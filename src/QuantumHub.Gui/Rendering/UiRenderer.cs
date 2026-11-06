@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Globalization;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -21,6 +22,12 @@ public sealed class UiRenderer(HubConnection hub, string pluginId, string pageId
 {
     /// <summary>Пауза, после которой значение ползунка уходит в хаб.</summary>
     private static readonly TimeSpan SliderDebounce = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>Наибольшая ширина контрола справа в карточке.</summary>
+    private const double MaxControlWidth = 420;
+
+    /// <summary>Чаще этого страница не тикает, сколько бы ни попросил плагин.</summary>
+    private const int MinLiveInterval = 250;
 
     /// <summary>Кого обновлять при изменении ключа.</summary>
     private readonly Dictionary<string, List<Action<string>>> _bindings = new();
@@ -56,9 +63,10 @@ public sealed class UiRenderer(HubConnection hub, string pluginId, string pageId
         "choice" => RenderChoice(node),
         "infobar" => RenderInfoBar(node),
         "progress" => RenderProgress(node),
+        "live" => RenderLive(node),
         "separator" => new Border { Height = 1, Margin = new Thickness(0, 8, 0, 8), Background = Fluent.Resource("DividerStrokeColorDefaultBrush") },
         // Плагин новее этого GUI: говорим об этом, а не роняем всю страницу.
-        _ => new InfoBar { IsOpen = true, IsClosable = false, Severity = InfoBarSeverity.Warning, Title = $"Неизвестный элемент: {node.Type}" },
+        _ => new InfoBar { IsOpen = true, IsClosable = false, Severity = InfoBarSeverity.Warning, Title = Loc.T($"Неизвестный элемент: {node.Type}", $"Unknown element: {node.Type}") },
     };
 
     /// <summary>Значение свойства узла.</summary>
@@ -124,6 +132,9 @@ public sealed class UiRenderer(HubConnection hub, string pluginId, string pageId
 
         var rendered = Render(control);
         rendered.VerticalAlignment = VerticalAlignment.Center;
+
+        // Колонка контрола подстраивается под содержимое: длинное значение иначе вытолкнет текст за край карточки.
+        rendered.MaxWidth = MaxControlWidth;
         return Fluent.Card(Fluent.Columns((text, Fluent.Star), (rendered, Fluent.Auto)));
     }
 
@@ -172,7 +183,7 @@ public sealed class UiRenderer(HubConnection hub, string pluginId, string pageId
     /// <summary>Переключатель. Флаг applying отличает изменение из кода от действия пользователя, иначе вышла бы петля.</summary>
     private ToggleSwitch RenderToggle(UiNode node)
     {
-        var toggle = new ToggleSwitch { OnContent = "Вкл", OffContent = "Выкл" };
+        var toggle = new ToggleSwitch { OnContent = Loc.T("Вкл", "On"), OffContent = Loc.T("Выкл", "Off") };
         var applying = false;
         Bind(node, "value", value =>
         {
@@ -309,24 +320,52 @@ public sealed class UiRenderer(HubConnection hub, string pluginId, string pageId
         return row;
     }
 
-    /// <summary>Выпадающий список.</summary>
+    /// <summary>Выпадающий список. Показывает подписи, а в хаб отправляет значения.</summary>
     private ComboBox RenderChoice(UiNode node)
     {
         var box = new ComboBox { MinWidth = 180 };
-        foreach (var option in Prop(node, "options").Split('\n', StringSplitOptions.RemoveEmptyEntries)) box.Items.Add(option);
+        var options = Prop(node, "options").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var labels = Prop(node, "labels").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < options.Length; i++) box.Items.Add(labels.Length == options.Length ? labels[i] : options[i]);
 
         var applying = false;
         Bind(node, "value", value =>
         {
             applying = true;
-            box.SelectedItem = value;
+            box.SelectedIndex = Array.IndexOf(options, value);
             applying = false;
         });
         box.SelectionChanged += (_, _) =>
         {
-            if (!applying && box.SelectedItem is string selected) Send(node, "changed", selected);
+            if (!applying && box.SelectedIndex >= 0) Send(node, "changed", options[box.SelectedIndex]);
         };
         return box;
+    }
+
+    /// <summary>Невидимый узел: сообщает плагину, что страница открыта, и тикает, пока её видно.</summary>
+    private Border RenderLive(UiNode node)
+    {
+        var interval = int.TryParse(Prop(node, "interval"), CultureInfo.InvariantCulture, out var ms) ? ms : 2000;
+        var timer = DispatcherQueue.GetForCurrentThread().CreateTimer();
+        timer.Interval = TimeSpan.FromMilliseconds(Math.Max(interval, MinLiveInterval));
+
+        var marker = new Border();
+        timer.Tick += (_, _) =>
+        {
+            // Окно могло уйти в трей: страница «открыта», но её никто не видит.
+            if (marker.XamlRoot?.IsHostVisible == true) Send(node, "tick");
+        };
+        marker.Loaded += (_, _) =>
+        {
+            Send(node, "opened");
+            timer.Start();
+        };
+        marker.Unloaded += (_, _) =>
+        {
+            timer.Stop();
+            Send(node, "closed");
+        };
+        return marker;
     }
 
     /// <summary>Информационная полоса.</summary>

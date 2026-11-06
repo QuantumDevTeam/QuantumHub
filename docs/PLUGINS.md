@@ -118,6 +118,33 @@ public sealed class AudioSwitcher : IHubPlugin, IUiProvider
 
 Установленный так плагин переживает обновление программы, а встроенные заменяются версиями из установщика.
 
+## Язык
+
+Программа говорит на русском и английском: берётся язык системы, а в настройках его можно сменить. Текст в коде плагина пишется парой:
+
+```csharp
+Ui.Button("start", Loc.T("Включить", "Turn on"));
+```
+
+`GetPages` вызывается при каждом открытии страницы, поэтому страницы переводятся сами. Если плагин уже показал текст через
+`Ui.Set`, он может отправить его заново в `OnLanguageChanged`. Иначе текст сменится при следующем обновлении.
+
+Текст манифеста переводится в блоке `locales`. Что в нём не указано, показывается как в манифесте:
+
+```jsonc
+"locales": {
+  "en": {
+    "description": "Keeps a headset awake.",
+    "groups": { "Шлем": "Headset" },
+    "settings": {
+      "mode": { "title": "Mode", "description": "How it works.", "options": { "fast": "Fast" } }
+    }
+  }
+}
+```
+
+Подписи вариантов типа `choice` задаются полем `optionLabels`, а в конфиг всегда пишется значение.
+
 ## Декларативный UI
 
 Помощники лежат в `QuantumHub.Contracts.Ui.Ui`.
@@ -143,6 +170,18 @@ public sealed class AudioSwitcher : IHubPlugin, IUiProvider
 Отдельная сборка с классом `INativePluginPage`, ссылка на `QuantumHub.Ui.Contracts` с
 `Private=false`. Пример: `plugins/QuantumHub.Plugin.Activity.Ui`. Страницы собирай кодом:
 скомпилированный XAML в динамически загруженной сборке рассчитывает на ресурсы приложения.
+
+## Обновление, пока страница открыта
+
+Узел `Ui.Live("id", 2000)` не виден на странице, но сообщает плагину, что её смотрят: приходят события `opened`, `tick` через
+каждый интервал и `closed`. Пока окно свёрнуто в трей, `tick` не приходит. Так данные обновляются сами и только когда нужны:
+
+```csharp
+public void OnUiEvent(UiEvent uiEvent)
+{
+    if (uiEvent.NodeId == "live" && uiEvent.Event != "closed") Refresh();
+}
+```
 
 ## Окна из плагина
 

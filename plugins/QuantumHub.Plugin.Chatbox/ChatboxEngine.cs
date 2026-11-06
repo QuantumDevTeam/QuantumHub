@@ -49,7 +49,7 @@ public sealed class ChatboxEngine(IChatData data, IChatSink sink, Func<ChatboxOp
     public async Task TickAsync()
     {
         var settings = options();
-        var inputs = await data.ReadAsync(settings.Status, settings.Modules);
+        var inputs = await data.ReadAsync(settings.Status, ChatboxComposer.Needed(settings.Modules, settings.Format));
         Preview = ChatboxComposer.Compose(inputs, settings.Modules, settings.Format);
 
         if (!settings.Sending || !GameRunning || inputs.Now < _holdUntil) return;

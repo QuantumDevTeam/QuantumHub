@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
 
@@ -103,7 +104,7 @@ public sealed class DiscordRpcClient(Stream stream) : IAsyncDisposable
                         await WriteAsync(DiscordOpcode.Pong, payload ?? new JsonObject(), _lifetime.Token);
                         break;
                     case DiscordOpcode.Close:
-                        failure = new DiscordRpcException(Code(payload), payload?["message"]?.GetValue<string>() ?? "Discord закрыл соединение.");
+                        failure = new DiscordRpcException(Code(payload), payload?["message"]?.GetValue<string>() ?? Loc.T("Discord закрыл соединение.", "Discord closed the connection."));
                         return;
                 }
             }
@@ -132,7 +133,7 @@ public sealed class DiscordRpcClient(Stream stream) : IAsyncDisposable
 
         if (nonce is not null && _pending.TryRemove(nonce, out var waiter))
         {
-            if (name == "ERROR") waiter.TrySetException(new DiscordRpcException(Code(data), data?["message"]?.GetValue<string>() ?? "Ошибка Discord."));
+            if (name == "ERROR") waiter.TrySetException(new DiscordRpcException(Code(data), data?["message"]?.GetValue<string>() ?? Loc.T("Ошибка Discord.", "Discord error.")));
             else waiter.TrySetResult(data);
             return;
         }
@@ -147,7 +148,7 @@ public sealed class DiscordRpcClient(Stream stream) : IAsyncDisposable
 
     private void Finish(Exception? failure)
     {
-        var error = failure as DiscordRpcException ?? new DiscordRpcException(0, "Соединение с Discord потеряно.");
+        var error = failure as DiscordRpcException ?? new DiscordRpcException(0, Loc.T("Соединение с Discord потеряно.", "Lost connection to Discord."));
         _ready.TrySetException(error);
         foreach (var nonce in _pending.Keys)
         {

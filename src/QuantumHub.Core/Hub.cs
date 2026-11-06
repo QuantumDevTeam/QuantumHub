@@ -1,3 +1,6 @@
+using System.Text.Json.Nodes;
+using System.Globalization;
+using QuantumHub.Contracts.Ui;
 using System.Reflection;
 using QuantumHub.Contracts.Bus;
 using QuantumHub.Contracts.Proto;
@@ -28,6 +31,9 @@ public sealed class HubOptions
 
     /// <summary>Дублировать журнал в консоль.</summary>
     public bool LogToConsole { get; init; }
+
+    /// <summary>Язык, если он не выбран в настройках: "auto", "ru" или "en".</summary>
+    public string? Language { get; init; }
 }
 
 /// <summary>
@@ -42,6 +48,14 @@ public sealed class Hub : IAsyncDisposable
 {
     /// <summary>Источник всего, что говорит сам хаб, и владелец его собственного конфига.</summary>
     public const string ConfigOwner = "hub";
+    /// <summary>Ключ настройки языка.</summary>
+    public const string LanguageKey = "language";
+    /// <summary>Ключ настройки: что записывать в журнал.</summary>
+    public const string LogLevelKey = "logLevel";
+    /// <summary>Ключ настройки: сколько дней хранить файлы журнала.</summary>
+    public const string LogRetentionKey = "logRetentionDays";
+    /// <summary>Топик смены языка. В теле код языка.</summary>
+    public const string LanguageTopic = "hub.language.changed";
 
     /// <summary>Топик: плагин сменил состояние.</summary>
     public const string PluginStateTopic = "hub.plugin.state";
@@ -113,6 +127,8 @@ public sealed class Hub : IAsyncDisposable
         Plugins.ExternalProviders = Server.Providers;
         Log.Written += PublishLog;
         Config.Changed += PublishConfigChange;
+        ApplyLanguage();
+        ApplyLogSettings();
 
         Plugins.Discover();
         Server.Start();
@@ -135,6 +151,23 @@ public sealed class Hub : IAsyncDisposable
         return Router.Find(id);
     }
 
+    /// <summary>Настройка языка: "auto", "ru" или "en".</summary>
+    public string LanguageSetting =>
+        Config.Get(ConfigOwner, LanguageKey)?.GetValue<string>() ?? _options.Language ?? Loc.Auto;
+
+    /// <summary>Применяет настройку языка.</summary>
+    private void ApplyLanguage() => Loc.Language = Loc.Resolve(LanguageSetting, CultureInfo.CurrentUICulture);
+
+    /// <summary>Применяет настройки журнала.</summary>
+    private void ApplyLogSettings()
+    {
+        // Конфиг можно поправить руками, и неверное значение не должно мешать хабу запуститься.
+        Log.MinLevel = Config.Get(ConfigOwner, LogLevelKey) is JsonValue level && level.TryGetValue<string>(out var name) ? name : "debug";
+        var days = Config.Get(ConfigOwner, LogRetentionKey) is JsonValue value && value.TryGetValue<int>(out var number) ? number : 0;
+        var removed = Log.Prune(days);
+        if (removed > 0) Log.Info($"Removed {removed} old log files");
+    }
+
     /// <summary>Рассылает запись журнала.</summary>
     private void PublishLog(LogEntry entry) => Router.Publish(ConfigOwner, LogTopic, HubPayload.Proto(entry));
 
@@ -149,6 +182,12 @@ public sealed class Hub : IAsyncDisposable
             Key = key,
             Json = value?.ToJsonString() ?? string.Empty,
         }));
+
+        if (owner == ConfigOwner && key is LogLevelKey or LogRetentionKey) ApplyLogSettings();
+        if (owner != ConfigOwner || key != LanguageKey) return;
+        ApplyLanguage();
+        Plugins.NotifyLanguageChanged();
+        Router.Publish(ConfigOwner, LanguageTopic, HubPayload.Text(Loc.Language));
     }
 
     /// <summary>Сводка для страницы «Обзор».</summary>
@@ -158,6 +197,8 @@ public sealed class Hub : IAsyncDisposable
         ProcessId = (uint)Environment.ProcessId,
         StartedUnixMs = _startedAt,
         RootDir = Paths.RootDir,
+        Language = Loc.Language,
+        LanguageSetting = LanguageSetting,
         DataDir = Paths.DataDir,
         PluginDirs = { Paths.PluginDirs },
         Transports = { Server.Transports },

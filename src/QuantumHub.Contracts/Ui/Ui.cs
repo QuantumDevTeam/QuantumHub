@@ -83,6 +83,15 @@ public static class Ui
     public static UiNode Info(string title, string message, string severity = "informational") =>
         Node("infobar").Prop("title", title).Prop("message", message).Prop("severity", severity);
 
+    /// <summary>
+    /// Невидимый узел «страница сейчас открыта». Пока её видно, плагину приходят события: "opened" при открытии,
+    /// "tick" через каждый интервал и "closed" при уходе. Так данные обновляются сами и только когда их смотрят.
+    /// </summary>
+    /// <param name="id">Id узла.</param>
+    /// <param name="intervalMs">Интервал в миллисекундах.</param>
+    public static UiNode Live(string id, int intervalMs = 2000) =>
+        Node("live", id).Prop("interval", intervalMs.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
     /// <summary>Узел произвольного типа.</summary>
     /// <param name="type">Тип узла.</param>
     /// <param name="id">Id узла.</param>

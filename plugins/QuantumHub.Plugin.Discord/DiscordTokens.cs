@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -69,10 +70,10 @@ public sealed class HttpTokenService : ITokenService
         using var response = await Client.PostAsync(Endpoint, new FormUrlEncodedContent(form), token);
         var text = await response.Content.ReadAsStringAsync(token);
         if (!response.IsSuccessStatusCode)
-            throw new DiscordRpcException((int)response.StatusCode, $"Discord не выдал токен, код {(int)response.StatusCode}. Проверь Client Secret и Redirect URI.");
+            throw new DiscordRpcException((int)response.StatusCode, Loc.T($"Discord не выдал токен, код {(int)response.StatusCode}. Проверь Client Secret и Redirect URI.", $"Discord gave no token, code {(int)response.StatusCode}. Check the Client Secret and Redirect URI."));
 
         var json = JsonNode.Parse(text);
-        var access = json?["access_token"]?.GetValue<string>() ?? throw new DiscordRpcException(0, "В ответе Discord нет токена.");
+        var access = json?["access_token"]?.GetValue<string>() ?? throw new DiscordRpcException(0, Loc.T("В ответе Discord нет токена.", "The Discord answer has no token."));
         return new DiscordTokens(access, json["refresh_token"]?.GetValue<string>());
     }
 }

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- OpenVR.NET тянет старый ImageSharp, но из пакета нужны только привязки Valve.VR, картинки он здесь не читает. -->
+    <NuGetAudit>false</NuGetAudit>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenVR.NET" GeneratePathProperty="true" />
+    <!-- Нужен только для восстановления пакета, в программу не попадает. -->
+    <PackageReference Include="SixLabors.ImageSharp" ExcludeAssets="all" PrivateAssets="all" />
+    <InternalsVisibleTo Include="QuantumHub.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(PkgOpenVR_NET)/content/openvr_api.dll" Link="openvr_api.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/QuantumHub.Gui/Assets/logo.png" Link="logo.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

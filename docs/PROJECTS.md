@@ -1,6 +1,6 @@
 # Что за проекты
 
-В решении 22 проекта. Выглядит много, но идея простая: **каждый процесс получает только то, что
+В решении 24 проекта. Выглядит много, но идея простая: **каждый процесс получает только то, что
 ему нужно**. Хабу незачем знать про WinUI, GUI незачем уметь загружать плагины, а внешнему плагину
 незачем тянуть всё ядро.
 
@@ -108,8 +108,9 @@ flowchart TD
 | [Notifications](../plugins/QuantumHub.Plugin.Notifications/README.md) | Всплывающие окошки для всех | `ui.notifications` | |
 | [Music](../plugins/QuantumHub.Plugin.Music/README.md) | Трек, уведомления, приглушение | `media.player` | `audio.devices`*, `ui.notifications`* |
 | [VR Switcher](../plugins/QuantumHub.Plugin.VrSwitcher/README.md) | Переводит звук на гарнитуру, пресеты | `vr.session` | `audio.devices`, `user.activity` |
-| [Pico Sleep Mode](../plugins/QuantumHub.Plugin.PicoAntiSleep/README.md) | Не даёт шлему заснуть | | `vr.session` |
+| [Pico Sleep Mode](../plugins/QuantumHub.Plugin.PicoAntiSleep/README.md) | Не даёт шлему заснуть | `vr.pico.sleep` | `vr.session` |
 | [Discord](../plugins/QuantumHub.Plugin.Discord/README.md) | Клиент Discord без окон: мьют, канал, участники, пинг, Rich Presence | `discord.client` | |
+| [SteamVR Dashboard](../plugins/QuantumHub.Plugin.VrDashboard/README.md) | Вкладка в меню SteamVR: звук, Discord, режим сна, чатбокс | | `user.activity`, `vr.session`*, `discord.client`*, `vr.pico.sleep`*, `vrchat.chatbox`* |
 | [VRChat OSC](../plugins/QuantumHub.Plugin.VrChatOsc/README.md) | Связь с игрой: чат, аватар, трекеры, приём | `vrchat.osc` | |
 | [VRChat Chatbox](../plugins/QuantumHub.Plugin.Chatbox/README.md) | Строки в чатбоксе, статус, мини-окно | `vrchat.chatbox` | `vrchat.osc`, `user.activity`, `media.player`*, `system.stats`* |
 | [UUID Backend](../plugins/QuantumHub.Plugin.UuidBackend/README.md) | Пример: хабовая половина разделённого плагина | | |
@@ -142,6 +143,7 @@ flowchart BT
 |---|---|---|
 | [QuantumHub.Notifier](../companions/QuantumHub.Notifier/README.md) | Notifications | Всплывающие окошки |
 | [QuantumHub.VrChatPanel](../companions/QuantumHub.VrChatPanel/README.md) | VRChat Chatbox | Мини-окно для статуса и сообщений |
+| [QuantumHub.VrDashboard](../companions/QuantumHub.VrDashboard/README.md) | SteamVR Dashboard | Панель в меню SteamVR |
 
 ### Внешние плагины и проверка
 

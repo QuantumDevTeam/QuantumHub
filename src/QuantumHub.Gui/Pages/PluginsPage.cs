@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using QuantumHub.Contracts.Proto;
@@ -25,10 +26,10 @@ public sealed class PluginsPage : HubPage
     public PluginsPage(HubConnection hub, MainWindow window) : base(hub)
     {
         _window = window;
-        var (root, body) = Fluent.Page("Плагины", "Всё, что умеет хаб, умеют плагины. Чтобы добавить плагин, открой файл .qhp или перетащи его в это окно.");
+        var (root, body) = Fluent.Page(Loc.T("Плагины", "Plugins"), Loc.T("Всё, что умеет хаб, умеют плагины. Чтобы добавить плагин, открой файл .qhp или перетащи его в это окно.", "Everything the hub can do comes from plugins. To add one, open a .qhp file or drop it into this window."));
         _body = body;
 
-        var install = new Button { Content = "Установить плагин…", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+        var install = new Button { Content = Loc.T("Установить плагин…", "Install plugin…"), Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         install.Click += async (_, _) => await InstallAsync();
         _body.Children.Add(install);
         _body.Children.Add(_list);
@@ -46,7 +47,7 @@ public sealed class PluginsPage : HubPage
     {
         if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
         e.AcceptedOperation = DataPackageOperation.Copy;
-        e.DragUIOverride.Caption = "Установить плагин";
+        e.DragUIOverride.Caption = Loc.T("Установить плагин", "Install plugin");
     }
 
     /// <summary>Файл бросили на страницу.</summary>
@@ -76,7 +77,7 @@ public sealed class PluginsPage : HubPage
         _list.Children.Clear();
         foreach (var plugin in list.Plugins) _list.Children.Add(Row(plugin));
         if (list.Plugins.Count == 0)
-            _list.Children.Add(Fluent.Text("Пока пусто. Установи первый плагин или положи его в папку plugins.", secondary: true));
+            _list.Children.Add(Fluent.Text(Loc.T("Пока пусто. Установи первый плагин или положи его в папку plugins.", "Nothing here yet. Install a plugin or put it into the plugins folder."), secondary: true));
     }
 
     /// <summary>Карточка плагина.</summary>
@@ -98,14 +99,14 @@ public sealed class PluginsPage : HubPage
             text.Children.Add(error);
         }
 
-        var open = new Button { Content = "Открыть" };
+        var open = new Button { Content = Loc.T("Открыть", "Open") };
         open.Click += (_, _) => _window.OpenPlugin(manifest.Id);
 
         var more = new Button { Content = Fluent.Icon("") };
         var menu = new MenuFlyout();
-        var restart = new MenuFlyoutItem { Text = "Перезапустить", Icon = new FontIcon { Glyph = "" } };
+        var restart = new MenuFlyoutItem { Text = Loc.T("Перезапустить", "Restart"), Icon = new FontIcon { Glyph = "" } };
         restart.Click += async (_, _) => await RunAsync("hub.plugins.restart", new PluginRef { Id = manifest.Id });
-        var remove = new MenuFlyoutItem { Text = "Удалить", Icon = new FontIcon { Glyph = "" } };
+        var remove = new MenuFlyoutItem { Text = Loc.T("Удалить", "Remove"), Icon = new FontIcon { Glyph = "" } };
         remove.Click += async (_, _) => await UninstallAsync(manifest);
         menu.Items.Add(restart);
         menu.Items.Add(remove);
@@ -127,13 +128,19 @@ public sealed class PluginsPage : HubPage
     /// <summary>Удаляет плагин после подтверждения.</summary>
     private async Task UninstallAsync(PluginManifest manifest)
     {
+        if (!GuiSettings.Current.ConfirmRemove)
+        {
+            await RunAsync("hub.plugins.uninstall", new PluginRef { Id = manifest.Id });
+            return;
+        }
+
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = $"Удалить «{manifest.Name}»?",
-            Content = "Настройки плагина останутся в папке пользователя.",
-            PrimaryButtonText = "Удалить",
-            CloseButtonText = "Отмена",
+            Title = Loc.T($"Удалить «{manifest.Name}»?", $"Remove \"{manifest.Name}\"?"),
+            Content = Loc.T("Настройки плагина останутся в папке пользователя.", "The plugin settings stay in your user folder."),
+            PrimaryButtonText = Loc.T("Удалить", "Remove"),
+            CloseButtonText = Loc.T("Отмена", "Cancel"),
         };
 
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
@@ -155,13 +162,19 @@ public sealed class PluginsPage : HubPage
     /// <param name="path">Путь к файлу плагина.</param>
     public async Task ConfirmAndInstallAsync(string path)
     {
+        if (!GuiSettings.Current.ConfirmInstall)
+        {
+            await InstallFileAsync(path);
+            return;
+        }
+
         var dialog = new ContentDialog
         {
             XamlRoot = _window.Content.XamlRoot,
-            Title = $"Установить {Path.GetFileName(path)}?",
-            Content = "Плагин работает с теми же правами, что и QuantumHub. Ставь только то, чему доверяешь.",
-            PrimaryButtonText = "Установить",
-            CloseButtonText = "Отмена",
+            Title = Loc.T($"Установить {Path.GetFileName(path)}?", $"Install {Path.GetFileName(path)}?"),
+            Content = Loc.T("Плагин работает с теми же правами, что и QuantumHub. Ставь только то, чему доверяешь.", "A plugin runs with the same rights as QuantumHub. Install only what you trust."),
+            PrimaryButtonText = Loc.T("Установить", "Install"),
+            CloseButtonText = Loc.T("Отмена", "Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -175,13 +188,13 @@ public sealed class PluginsPage : HubPage
         var (plugin, error) = await Hub.CallWithErrorAsync<PluginInfo>("hub.plugins.install", new InstallRequest { Path = path });
         if (plugin is null)
         {
-            Notify(InfoBarSeverity.Error, "Не получилось установить", error ?? Path.GetFileName(path));
+            Notify(InfoBarSeverity.Error, Loc.T("Не получилось установить", "Could not install"), error ?? Path.GetFileName(path));
             return;
         }
 
         var name = plugin.Manifest.Name.Length > 0 ? plugin.Manifest.Name : plugin.Manifest.Id;
-        if (plugin.Error.Length > 0) Notify(InfoBarSeverity.Warning, $"«{name}» установлен, но не запустился", plugin.Error);
-        else Notify(InfoBarSeverity.Success, $"«{name}» {plugin.Manifest.Version} установлен", string.Empty);
+        if (plugin.Error.Length > 0) Notify(InfoBarSeverity.Warning, Loc.T($"«{name}» установлен, но не запустился", $"\"{name}\" is installed but did not start"), plugin.Error);
+        else Notify(InfoBarSeverity.Success, Loc.T($"«{name}» {plugin.Manifest.Version} установлен", $"\"{name}\" {plugin.Manifest.Version} installed"), string.Empty);
     }
 
     /// <summary>Показывает итог установки вместо предыдущего.</summary>

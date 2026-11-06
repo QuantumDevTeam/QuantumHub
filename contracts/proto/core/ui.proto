@@ -10,7 +10,7 @@ message UiNode {
   // Id узла, приходит обратно в UiEvent.
   string id = 1;
   // stack, card, text, button, toggle, textbox, password, number, slider, choice,
-  // infobar, progress, keyvalue, separator. Незнакомый тип показывается как предупреждение.
+  // infobar, progress, keyvalue, separator, live. Незнакомый тип показывается как предупреждение.
   string type = 2;
   // Постоянные значения свойств.
   map<string, string> props = 3;

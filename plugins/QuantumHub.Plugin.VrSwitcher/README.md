@@ -46,3 +46,8 @@ var devices = await client.CallAsync("cap:audio.devices", "devices.current");
 ## Важно
 
 Не держи автопереключение одновременно здесь и в VRAutomizer: они будут мешать друг другу.
+
+## Переключить вручную
+
+Метод `audio.target.set` возможности `vr.session` переводит звук: `{ "target": "headset" }` на гарнитуру, `{ "target": "desktop" }` обратно.
+Отвечает тем же, что `session.get`.

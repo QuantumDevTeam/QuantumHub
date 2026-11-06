@@ -1,9 +1,11 @@
+using QuantumHub.Contracts.Ui;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using QuantumHub.Contracts.Proto;
+using QuantumHub.Gui.Services;
 using Windows.UI;
 
 namespace QuantumHub.Gui;
@@ -11,6 +13,25 @@ namespace QuantumHub.Gui;
 /// <summary>Несколько строительных блоков, из которых собраны все страницы, чтобы они выглядели одним приложением.</summary>
 public static class Fluent
 {
+    /// <summary>Во сколько раз компактная плотность уменьшает отступы.</summary>
+    private const double CompactPadding = 0.55;
+
+    /// <summary>Включена ли компактная плотность.</summary>
+    private static bool Compact => GuiSettings.Current.Density == "compact";
+
+    /// <summary>Наибольшая ширина страницы.</summary>
+    public static double PageMaxWidth => GuiSettings.Current.PageWidth switch
+    {
+        "wide" => 1600,
+        "full" => double.PositiveInfinity,
+        _ => 1100,
+    };
+
+    /// <summary>Время в выбранном формате.</summary>
+    /// <param name="time">Время.</param>
+    public static string Clock(DateTimeOffset time) =>
+        time.ToString(GuiSettings.Current.Clock == "12" ? "hh:mm:ss tt" : "HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+
     /// <summary>Кисть из ресурсов темы. Светлая и тёмная темы работают автоматически.</summary>
     /// <param name="key">Имя ресурса.</param>
     public static Brush Resource(string key) => (Brush)Application.Current.Resources[key];
@@ -52,7 +73,7 @@ public static class Fluent
     public static Border Card(UIElement content, double padding = 16) => new()
     {
         Child = content,
-        Padding = new Thickness(padding),
+        Padding = new Thickness(Compact ? padding * CompactPadding : padding),
         CornerRadius = new CornerRadius(8),
         BorderThickness = new Thickness(1),
         Background = Resource("CardBackgroundFillColorDefaultBrush"),
@@ -65,8 +86,9 @@ public static class Fluent
     /// <returns>Корень страницы и панель для содержимого.</returns>
     public static (ScrollViewer Root, StackPanel Body) Page(string title, string? subtitle = null)
     {
-        var body = new StackPanel { Spacing = 8, ChildrenTransitions = [new EntranceThemeTransition { IsStaggeringEnabled = true }] };
-        var column = new StackPanel { Spacing = 20, Padding = new Thickness(36, 24, 36, 36), MaxWidth = 1100, HorizontalAlignment = HorizontalAlignment.Stretch };
+        var body = new StackPanel { Spacing = Compact ? 4 : 8 };
+        if (GuiSettings.Current.Animations) body.ChildrenTransitions = [new EntranceThemeTransition { IsStaggeringEnabled = true }];
+        var column = new StackPanel { Spacing = 20, Padding = new Thickness(36, 24, 36, 36), MaxWidth = PageMaxWidth, HorizontalAlignment = HorizontalAlignment.Stretch };
 
         var header = new StackPanel { Spacing = 4 };
         header.Children.Add(Text(title, "TitleTextBlockStyle"));
@@ -74,7 +96,19 @@ public static class Fluent
         column.Children.Add(header);
         column.Children.Add(body);
 
-        return (new ScrollViewer { Content = column }, body);
+        return (Scroll(column), body);
+    }
+
+    /// <summary>
+    /// Прокрутка для колонки с ограниченной шириной. Сетка между ними обязательна: ScrollViewer ставит прямого потомка
+    /// с MaxWidth со сдвигом, и после сворачивания меню страница уезжает за правый край.
+    /// </summary>
+    /// <param name="column">Колонка.</param>
+    public static ScrollViewer Scroll(FrameworkElement column)
+    {
+        var host = new Grid();
+        host.Children.Add(column);
+        return new ScrollViewer { Content = host };
     }
 
     /// <summary>Цветная метка состояния плагина.</summary>
@@ -83,13 +117,13 @@ public static class Fluent
     {
         var (label, color) = state switch
         {
-            PluginState.Running => ("работает", Color.FromArgb(255, 34, 197, 94)),
-            PluginState.Starting => ("запускается", Color.FromArgb(255, 59, 130, 246)),
-            PluginState.Stopping => ("останавливается", Color.FromArgb(255, 59, 130, 246)),
-            PluginState.Disabled => ("выключен", Color.FromArgb(255, 148, 163, 184)),
-            PluginState.Faulted => ("ошибка", Color.FromArgb(255, 239, 68, 68)),
-            PluginState.Blocked => ("ждёт зависимость", Color.FromArgb(255, 234, 179, 8)),
-            _ => ("ждёт запроса", Color.FromArgb(255, 148, 163, 184)),
+            PluginState.Running => (Loc.T("работает", "running"), Color.FromArgb(255, 34, 197, 94)),
+            PluginState.Starting => (Loc.T("запускается", "starting"), Color.FromArgb(255, 59, 130, 246)),
+            PluginState.Stopping => (Loc.T("останавливается", "stopping"), Color.FromArgb(255, 59, 130, 246)),
+            PluginState.Disabled => (Loc.T("выключен", "off"), Color.FromArgb(255, 148, 163, 184)),
+            PluginState.Faulted => (Loc.T("ошибка", "error"), Color.FromArgb(255, 239, 68, 68)),
+            PluginState.Blocked => (Loc.T("ждёт зависимость", "needs a dependency"), Color.FromArgb(255, 234, 179, 8)),
+            _ => (Loc.T("ждёт запроса", "on demand"), Color.FromArgb(255, 148, 163, 184)),
         };
 
         return new Border

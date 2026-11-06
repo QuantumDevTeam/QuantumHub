@@ -10,5 +10,10 @@
   "provides": [
     { "name": "system.specs", "version": "1.2.0" },
     { "name": "system.stats", "version": "1.0.0" }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "description": "Computer specs and current load: processor, memory, graphics card."
+    }
+  }
 }

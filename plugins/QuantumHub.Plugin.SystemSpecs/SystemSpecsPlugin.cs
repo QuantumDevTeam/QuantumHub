@@ -23,25 +23,39 @@ public sealed record SystemSpecs(string Machine, string Os, string Cpu, int Thre
 [HubPlugin]
 public sealed class SystemSpecsPlugin : IHubPlugin, IUiProvider
 {
+    /// <summary>Как часто обновлять загрузку, пока страница открыта.</summary>
+    private const int LoadRefreshMs = 2000;
+
+    private SystemSpecs _specs = null!;
+
     private IPluginContext _context = null!;
     private SystemStatsReader _stats = null!;
 
     /// <inheritdoc/>
     public Task StartAsync(IPluginContext context, CancellationToken token)
     {
-        var specs = Read();
+        var specs = _specs = Read();
         _stats = new SystemStatsReader();
         _context = context;
         context.Bus.Handle("specs.get", (_, _) => ValueTask.FromResult(HubPayload.Json(specs)));
         context.Bus.Handle("stats.get", (_, _) => ValueTask.FromResult(HubPayload.Json(_stats.Read())));
 
-        context.Ui.Set("machine", specs.Machine);
-        context.Ui.Set("os", specs.Os);
-        context.Ui.Set("cpu", $"{specs.Cpu} ({specs.Threads} потоков)");
-        context.Ui.Set("ram", $"{specs.RamGb:F1} ГБ");
-        context.Ui.Set("gpu", string.Join(", ", specs.Gpus));
+        PushSpecs();
         return Task.CompletedTask;
     }
+
+    /// <summary>Показывает характеристики на текущем языке.</summary>
+    private void PushSpecs()
+    {
+        _context.Ui.Set("machine", _specs.Machine);
+        _context.Ui.Set("os", _specs.Os);
+        _context.Ui.Set("cpu", Loc.T($"{_specs.Cpu} ({_specs.Threads} потоков)", $"{_specs.Cpu} ({_specs.Threads} threads)"));
+        _context.Ui.Set("ram", Loc.T($"{_specs.RamGb:F1} ГБ", $"{_specs.RamGb:F1} GB"));
+        _context.Ui.Set("gpu", string.Join(", ", _specs.Gpus));
+    }
+
+    /// <inheritdoc/>
+    public void OnLanguageChanged() => PushSpecs();
 
     /// <inheritdoc/>
     public Task StopAsync(CancellationToken token)
@@ -53,24 +67,24 @@ public sealed class SystemSpecsPlugin : IHubPlugin, IUiProvider
     /// <inheritdoc/>
     public IEnumerable<UiPage> GetPages()
     {
-        yield return Ui.Page("main", "Система", "E7F4",
-            Ui.KeyValue("Компьютер", "machine"),
-            Ui.KeyValue("ОС", "os"),
-            Ui.KeyValue("Процессор", "cpu"),
-            Ui.KeyValue("Память", "ram"),
-            Ui.KeyValue("Видеокарта", "gpu"),
-            Ui.Text("Загрузка", "subtitle"),
-            Ui.KeyValue("Сейчас", "load"),
-            Ui.Button("refresh", "Обновить"));
+        yield return Ui.Page("main", Loc.T("Система", "System"), "E7F4",
+            Ui.KeyValue(Loc.T("Компьютер", "Computer"), "machine"),
+            Ui.KeyValue(Loc.T("ОС", "OS"), "os"),
+            Ui.KeyValue(Loc.T("Процессор", "Processor"), "cpu"),
+            Ui.KeyValue(Loc.T("Память", "Memory"), "ram"),
+            Ui.KeyValue(Loc.T("Видеокарта", "Graphics card"), "gpu"),
+            Ui.Text(Loc.T("Загрузка", "Load"), "subtitle"),
+            Ui.KeyValue(Loc.T("Сейчас", "Now"), "load"),
+            Ui.Live("live", LoadRefreshMs));
     }
 
     /// <inheritdoc/>
     public void OnUiEvent(UiEvent uiEvent)
     {
-        if (uiEvent.NodeId != "refresh") return;
+        if (uiEvent.NodeId != "live" || uiEvent.Event == "closed") return;
         var stats = _stats.Read();
-        _context.Ui.Set("load", $"CPU {stats.CpuPercent:0}%, GPU {stats.GpuPercent:0}%, RAM {stats.RamUsedGb:0.0}/{stats.RamTotalGb:0.0} ГБ, " +
-                                $"VRAM {stats.VramUsedGb:0.0}/{stats.VramTotalGb:0.0} ГБ");
+        _context.Ui.Set("load", Loc.T($"CPU {stats.CpuPercent:0}%, GPU {stats.GpuPercent:0}%, RAM {stats.RamUsedGb:0.0}/{stats.RamTotalGb:0.0} ГБ, ", $"CPU {stats.CpuPercent:0}%, GPU {stats.GpuPercent:0}%, RAM {stats.RamUsedGb:0.0}/{stats.RamTotalGb:0.0} GB, ") +
+                                Loc.T($"VRAM {stats.VramUsedGb:0.0}/{stats.VramTotalGb:0.0} ГБ", $"VRAM {stats.VramUsedGb:0.0}/{stats.VramTotalGb:0.0} GB"));
     }
 
     /// <summary>Читает характеристики через реестр и WinAPI, без тяжёлого WMI.</summary>
@@ -78,7 +92,7 @@ public sealed class SystemSpecsPlugin : IHubPlugin, IUiProvider
     {
         var cpu = Registry.GetValue(@"HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\CentralProcessor\0",
             "ProcessorNameString", null) as string;
-        return new SystemSpecs(Environment.MachineName, RuntimeInformation.OSDescription, cpu?.Trim() ?? "неизвестно",
+        return new SystemSpecs(Environment.MachineName, RuntimeInformation.OSDescription, cpu?.Trim() ?? Loc.T("неизвестно", "unknown"),
             Environment.ProcessorCount, Math.Round(TotalMemoryGb(), 1), Gpus());
     }
 

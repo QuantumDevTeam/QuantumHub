@@ -107,8 +107,8 @@ public sealed class AudioDevicesPlugin : IHubPlugin, IUiProvider
             _last = current;
         }
 
-        _context.Ui.Set("playback", current.Playback?.Name ?? "нет");
-        _context.Ui.Set("recording", current.Recording?.Name ?? "нет");
+        _context.Ui.Set("playback", current.Playback?.Name ?? Loc.T("нет", "none"));
+        _context.Ui.Set("recording", current.Recording?.Name ?? Loc.T("нет", "none"));
         _ = _context.Bus.PublishAsync(ChangedTopic, HubPayload.Json(current));
     }
 
@@ -119,16 +119,16 @@ public sealed class AudioDevicesPlugin : IHubPlugin, IUiProvider
         _context.Ui.Set("playbackDevices", string.Join('\n', all.Playback.Select(device => device.Name)));
         _context.Ui.Set("recordingDevices", string.Join('\n', all.Recording.Select(device => device.Name)));
         _context.Ui.Set("sessions", string.Join('\n', _audio.Sessions().OrderByDescending(session => session.Peak)
-            .Select(session => $"{session.Process}: громкость {session.Volume:P0}, уровень {session.Peak:0.00}")));
+            .Select(session => Loc.T($"{session.Process}: громкость {session.Volume:P0}, уровень {session.Peak:0.00}", $"{session.Process}: volume {session.Volume:P0}, level {session.Peak:0.00}"))));
 
-        yield return Ui.Page("main", "Устройства", "E767",
-            Ui.KeyValue("Наушники сейчас", "playback"),
-            Ui.KeyValue("Микрофон сейчас", "recording"),
-            Ui.Text("Наушники и динамики", "subtitle"),
+        yield return Ui.Page("main", Loc.T("Устройства", "Devices"), "E767",
+            Ui.KeyValue(Loc.T("Наушники сейчас", "Current output"), "playback"),
+            Ui.KeyValue(Loc.T("Микрофон сейчас", "Current microphone"), "recording"),
+            Ui.Text(Loc.T("Наушники и динамики", "Headphones and speakers"), "subtitle"),
             Ui.BoundText("playbackDevices", "mono"),
-            Ui.Text("Микрофоны", "subtitle"),
+            Ui.Text(Loc.T("Микрофоны", "Microphones"), "subtitle"),
             Ui.BoundText("recordingDevices", "mono"),
-            Ui.Text("Приложения со звуком, на момент открытия", "subtitle"),
+            Ui.Text(Loc.T("Приложения со звуком, на момент открытия", "Apps playing sound, when opened"), "subtitle"),
             Ui.BoundText("sessions", "mono"));
     }
 

@@ -116,7 +116,7 @@ public sealed class MusicPlugin : IHubPlugin, IUiProvider
                 if (_context.Config.Get("ducking", true) || _duck.IsDucked)
                     await TryAsync(() => _duck.TickAsync(_tracker.Current?.State == PlaybackState.Playing));
 
-                _context.Ui.Set("duck", _duck.IsDucked ? $"приглушена из-за {_duck.Trigger ?? "другого приложения"}" : "обычная громкость");
+                _context.Ui.Set("duck", _duck.IsDucked ? Loc.T($"приглушена из-за {_duck.Trigger ?? "другого приложения"}", $"lowered because of {_duck.Trigger ?? "another app"}") : Loc.T("обычная громкость", "normal volume"));
             }
         }
         catch (OperationCanceledException)
@@ -206,12 +206,12 @@ public sealed class MusicPlugin : IHubPlugin, IUiProvider
     private void PushState()
     {
         var track = _tracker.Current;
-        _context.Ui.Set("track", track is null ? "плеер не найден" : $"{track.Artist} — {track.Title}");
+        _context.Ui.Set("track", track is null ? Loc.T("плеер не найден", "no player found") : $"{track.Artist} — {track.Title}");
         _context.Ui.Set("state", track?.State switch
         {
-            PlaybackState.Playing => "играет",
-            PlaybackState.Paused => "на паузе",
-            _ => "остановлено",
+            PlaybackState.Playing => Loc.T("играет", "playing"),
+            PlaybackState.Paused => Loc.T("на паузе", "paused"),
+            _ => Loc.T("остановлено", "stopped"),
         });
         _context.Ui.Set("app", track?.AppId ?? "—");
     }
@@ -222,13 +222,13 @@ public sealed class MusicPlugin : IHubPlugin, IUiProvider
         var known = _source.ReadAsync().GetAwaiter().GetResult();
         _context.Ui.Set("sessions", string.Join('\n', known.Select(session => $"{session.AppId}: {session.Title}")));
 
-        yield return Ui.Page("main", "Сейчас", "E8D6",
-            Ui.KeyValue("Трек", "track"),
-            Ui.KeyValue("Состояние", "state"),
-            Ui.KeyValue("Приложение", "app"),
-            Ui.KeyValue("Громкость", "duck"),
-            Ui.Text("Что система видит сейчас", "subtitle"),
-            Ui.Text("Отсюда можно взять имя для настройки «Музыкальные приложения».", "caption"),
+        yield return Ui.Page("main", Loc.T("Сейчас", "Now"), "E8D6",
+            Ui.KeyValue(Loc.T("Трек", "Track"), "track"),
+            Ui.KeyValue(Loc.T("Состояние", "State"), "state"),
+            Ui.KeyValue(Loc.T("Приложение", "App"), "app"),
+            Ui.KeyValue(Loc.T("Громкость", "Volume"), "duck"),
+            Ui.Text(Loc.T("Что система видит сейчас", "What the system sees now"), "subtitle"),
+            Ui.Text(Loc.T("Отсюда можно взять имя для настройки «Музыкальные приложения».", "Take the name for the \"Music apps\" setting from here."), "caption"),
             Ui.BoundText("sessions", "mono"));
     }
 

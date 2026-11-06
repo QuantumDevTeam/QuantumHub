@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using QuantumHub.Contracts.Proto;
@@ -14,7 +15,7 @@ public sealed class OverviewPage : HubPage
     /// <param name="hub">Связь с хабом.</param>
     public OverviewPage(HubConnection hub) : base(hub)
     {
-        var (root, body) = Fluent.Page("Обзор", "Хаб работает в фоне. Это окно можно закрыть, плагины останутся на месте.");
+        var (root, body) = Fluent.Page(Loc.T("Обзор", "Overview"), Loc.T("Хаб работает в фоне. Это окно можно закрыть, плагины останутся на месте.", "The hub runs in the background. You can close this window, plugins keep working."));
         _body = body;
         Content = root;
     }
@@ -39,10 +40,10 @@ public sealed class OverviewPage : HubPage
         var tiles = new Grid { ColumnSpacing = 8 };
         var data = new[]
         {
-            ("", running.ToString(), $"из {plugins.Plugins.Count} плагинов работают"),
-            ("", sessions.Sessions.Count.ToString(), "подключений"),
-            ("", FormatUptime(uptime), "без перезапуска"),
-            ("", problems.ToString(), "проблем"),
+            ("", running.ToString(), Loc.T($"из {plugins.Plugins.Count} плагинов работают", $"of {plugins.Plugins.Count} plugins running")),
+            ("", sessions.Sessions.Count.ToString(), Loc.T("подключений", "connections")),
+            ("", FormatUptime(uptime), Loc.T("без перезапуска", "uptime")),
+            ("", problems.ToString(), Loc.T("проблем", "problems")),
         };
 
         for (var i = 0; i < data.Length; i++)
@@ -63,10 +64,13 @@ public sealed class OverviewPage : HubPage
         }
 
         _body.Children.Add(tiles);
-        _body.Children.Add(Row("Версия хаба", status.Version));
-        _body.Children.Add(Row("Транспорты", string.Join(", ", status.Transports)));
-        _body.Children.Add(Row("Программа", status.RootDir));
-        _body.Children.Add(Row("Данные и настройки", status.DataDir));
+        _body.Children.Add(Row(Loc.T("Версия хаба", "Hub version"), status.Version));
+        _body.Children.Add(Row(Loc.T("Транспорты", "Transports"), string.Join(", ", status.Transports)));
+        if (GuiSettings.Current.OverviewPaths)
+        {
+            _body.Children.Add(Row(Loc.T("Программа", "Program"), status.RootDir));
+            _body.Children.Add(Row(Loc.T("Данные и настройки", "Data and settings"), status.DataDir));
+        }
     }
 
     /// <summary>Строка сведений.</summary>
@@ -77,22 +81,22 @@ public sealed class OverviewPage : HubPage
     /// <summary>Показывает предупреждение с кнопкой запуска хаба.</summary>
     private void ShowDisconnected()
     {
-        var button = new Button { Content = "Запустить хаб", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+        var button = new Button { Content = Loc.T("Запустить хаб", "Start the hub"), Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         button.Click += (_, _) => Hub.LaunchService();
         _body.Children.Add(new InfoBar
         {
             IsOpen = true,
             IsClosable = false,
             Severity = InfoBarSeverity.Warning,
-            Title = "Хаб не отвечает",
-            Message = Hub.ServiceProblem ?? "Запускаю его. Плагины станут доступны через несколько секунд.",
+            Title = Loc.T("Хаб не отвечает", "The hub is not responding"),
+            Message = Hub.ServiceProblem ?? Loc.T("Запускаю его. Плагины станут доступны через несколько секунд.", "Starting it. Plugins will be available in a few seconds."),
             ActionButton = button,
         });
     }
 
     /// <summary>Время работы для человека.</summary>
     private static string FormatUptime(TimeSpan time) =>
-        time.TotalDays >= 1 ? $"{(int)time.TotalDays} д {time.Hours} ч"
-        : time.TotalHours >= 1 ? $"{(int)time.TotalHours} ч {time.Minutes} мин"
-        : $"{(int)time.TotalMinutes} мин";
+        time.TotalDays >= 1 ? Loc.T($"{(int)time.TotalDays} д {time.Hours} ч", $"{(int)time.TotalDays} d {time.Hours} h")
+        : time.TotalHours >= 1 ? Loc.T($"{(int)time.TotalHours} ч {time.Minutes} мин", $"{(int)time.TotalHours} h {time.Minutes} min")
+        : Loc.T($"{(int)time.TotalMinutes} мин", $"{(int)time.TotalMinutes} min");
 }

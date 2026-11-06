@@ -155,6 +155,19 @@ public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginCo
 
     // Реализация IEndpoint.
 
+    /// <summary>Сообщает плагину о смене языка. Его ошибка остаётся его ошибкой.</summary>
+    public void NotifyLanguageChanged()
+    {
+        try
+        {
+            (_instance as IUiProvider)?.OnLanguageChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Language change failed", ex);
+        }
+    }
+
     /// <summary>Выполняет запрос к плагину. Ошибка плагина становится ответом с ошибкой и не затрагивает хаб.</summary>
     /// <param name="request">Запрос.</param>
     /// <param name="token">Отмена.</param>

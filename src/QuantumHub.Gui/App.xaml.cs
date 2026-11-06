@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using QuantumHub.Gui.Services;
@@ -24,6 +25,12 @@ public partial class App : Application
     /// <summary>Подключает глобальную обработку ошибок.</summary>
     public App()
     {
+        // Тему можно задать только здесь: кисти, которые страницы берут из кода, зависят от темы приложения.
+        GuiSettings.Init(Option(Environment.GetCommandLineArgs(), "--instance") ?? HubEndpoint.DefaultInstance);
+        ThemeAtStart = GuiSettings.Current.Theme;
+        if (ThemeAtStart == "light") RequestedTheme = ApplicationTheme.Light;
+        if (ThemeAtStart == "dark") RequestedTheme = ApplicationTheme.Dark;
+
         InitializeComponent();
         UnhandledException += (_, e) =>
         {
@@ -69,9 +76,10 @@ public partial class App : Application
 
         var dispatcher = DispatcherQueue.GetForCurrentThread();
         _hub = new HubConnection(new HubEndpoint(instance), dispatcher, Option(argv, "--service-args"));
-        _window = new MainWindow(_hub, Option(argv, "--page"));
+        _window = new MainWindow(_hub, Option(argv, "--page"), instance);
         _tray = new TrayIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico"), "QuantumHub",
             ShowWindow, Quit, QuitAndStopHub);
+        _window.ExitRequested += () => dispatcher.TryEnqueue(Quit);
 
         ThreadPool.RegisterWaitForSingleObject(_showSignal,
             (_, _) => dispatcher.TryEnqueue(() =>
@@ -94,6 +102,36 @@ public partial class App : Application
         {
             if (_window is not null) await _window.InstallFromShellAsync(path);
         }
+    }
+
+    /// <summary>Тема, с которой запущено окно.</summary>
+    public static string ThemeAtStart { get; private set; } = GuiSettings.System;
+
+    /// <summary>Перезапускает только интерфейс: хаб и плагины продолжают работать.</summary>
+    /// <param name="page">Какую страницу открыть.</param>
+    public void RestartInterface(string page)
+    {
+        var argv = Environment.GetCommandLineArgs();
+        var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
+        foreach (var name in new[] { "--instance", "--service-args" })
+        {
+            if (Option(argv, name) is not { } value) continue;
+            start.ArgumentList.Add(name);
+            start.ArgumentList.Add(value);
+        }
+
+        start.ArgumentList.Add("--page");
+        start.ArgumentList.Add(page);
+
+        _tray?.Dispose();
+        _window?.CloseForReal();
+
+        // Мьютекс отпускаем заранее, иначе новый запуск решит, что окно уже открыто, и просто закроется.
+        _single?.ReleaseMutex();
+        _single?.Dispose();
+        _single = null;
+        Process.Start(start)?.Dispose();
+        Exit();
     }
 
     /// <summary>Показывает окно.</summary>

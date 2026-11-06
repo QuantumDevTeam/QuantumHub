@@ -201,6 +201,30 @@ message HubStatus {
   repeated string plugin_dirs = 6;
   // Включённые транспорты.
   repeated string transports = 7;
+  // Язык интерфейса: "ru" или "en".
+  string language = 8;
+  // Настройка языка: "auto", "ru" или "en".
+  string language_setting = 9;
+}
+
+// Одно подключение за время работы хаба.
+message SessionHistoryEntry {
+  // Имя для показа.
+  string display_name = 1;
+  // Id клиента.
+  string client_id = 2;
+  // Роль.
+  string role = 3;
+  // Когда подключился.
+  int64 connected_unix_ms = 4;
+  // Когда отключился. 0, если он всё ещё подключён.
+  int64 disconnected_unix_ms = 5;
+}
+
+// Ответ hub.sessions.history: сначала самые новые.
+message SessionHistory {
+  // Подключения.
+  repeated SessionHistoryEntry entries = 1;
 }
 
 // Запись журнала.

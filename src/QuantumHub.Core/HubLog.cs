@@ -14,18 +14,64 @@ public sealed class HubLog : IDisposable
     private readonly StreamWriter _file;
     private bool _closed;
 
+    /// <summary>Начало имени файла журнала.</summary>
+    private const string FilePrefix = "hub-";
+    /// <summary>Папка журналов.</summary>
+    private readonly string _logsDir;
+    /// <summary>Файл журнала на сегодня.</summary>
+    private readonly string _currentFile;
+
     /// <summary>Открывает файл журнала на сегодня.</summary>
     /// <param name="logsDir">Папка журналов.</param>
     /// <param name="echoToConsole">Дублировать в консоль.</param>
     public HubLog(string logsDir, bool echoToConsole = false)
     {
         EchoToConsole = echoToConsole;
-        var path = Path.Combine(logsDir, $"hub-{DateTime.Now:yyyy-MM-dd}.log");
-        _file = new StreamWriter(new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)) { AutoFlush = true };
+        _logsDir = logsDir;
+        _currentFile = Path.Combine(logsDir, $"{FilePrefix}{DateTime.Now:yyyy-MM-dd}.log");
+        _file = new StreamWriter(new FileStream(_currentFile, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)) { AutoFlush = true };
     }
 
     /// <summary>Дублируются ли записи в консоль.</summary>
     public bool EchoToConsole { get; }
+
+    /// <summary>Записи ниже этого уровня не сохраняются: "debug", "info", "warning" или "error".</summary>
+    public string MinLevel { get; set; } = "debug";
+
+    /// <summary>Вес уровня.</summary>
+    private static int Rank(string level) => level switch
+    {
+        "debug" => 0,
+        "warning" => 2,
+        "error" => 3,
+        _ => 1,
+    };
+
+    /// <summary>Удаляет файлы журнала старше указанного срока. Сегодняшний файл не трогает.</summary>
+    /// <param name="days">Сколько дней хранить. 0 значит хранить всегда.</param>
+    /// <returns>Сколько файлов удалено.</returns>
+    public int Prune(int days)
+    {
+        if (days <= 0) return 0;
+
+        var removed = 0;
+        var limit = DateTime.Now.AddDays(-days);
+        foreach (var file in new DirectoryInfo(_logsDir).EnumerateFiles($"{FilePrefix}*.log"))
+        {
+            if (file.LastWriteTime >= limit || string.Equals(file.FullName, Path.GetFullPath(_currentFile), StringComparison.OrdinalIgnoreCase)) continue;
+            try
+            {
+                file.Delete();
+                removed++;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Файл открыт другой программой, удалится в следующий раз.
+            }
+        }
+
+        return removed;
+    }
 
     /// <summary>Новая запись. Так журнал попадает в GUI.</summary>
     public event Action<LogEntry>? Written;
@@ -36,6 +82,8 @@ public sealed class HubLog : IDisposable
     /// <param name="message">Текст.</param>
     public void Write(string level, string source, string message)
     {
+        if (Rank(level) < Rank(MinLevel)) return;
+
         var entry = new LogEntry
         {
             UnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),

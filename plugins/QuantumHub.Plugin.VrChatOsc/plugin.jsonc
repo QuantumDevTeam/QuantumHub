@@ -40,5 +40,32 @@
       "description": "В VRChat по умолчанию 9001.",
       "default": 9001
     }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "description": "Link to VRChat over OSC: chat, avatar parameters, trackers and messages from the game. Other plugins use it.",
+      "groups": {
+        "Отправка": "Sending",
+        "Приём": "Receiving"
+      },
+      "settings": {
+        "host": {
+          "title": "VRChat address",
+          "description": "If the game runs on another computer, set its address."
+        },
+        "sendPort": {
+          "title": "Send port",
+          "description": "VRChat uses 9000 by default."
+        },
+        "receive": {
+          "title": "Receive messages from the game",
+          "description": "Avatar parameters and avatar changes. Only one program can listen on the port."
+        },
+        "receivePort": {
+          "title": "Receive port",
+          "description": "VRChat uses 9001 by default."
+        }
+      }
+    }
+  }
 }

@@ -56,6 +56,7 @@
       "title": "Кто приглушает",
       "description": "whitelist: только приложения из белого списка. blacklist: все, кроме чёрного.",
       "options": [ "whitelist", "blacklist" ],
+      "optionLabels": { "whitelist": "Белый список", "blacklist": "Чёрный список" },
       "default": "whitelist"
     },
     {
@@ -111,5 +112,63 @@
       "min": 1,
       "max": 30
     }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "description": "Finds the music player, shows a track notification and lowers music when another app is talking.",
+      "groups": {
+        "Плеер": "Player",
+        "Уведомления": "Notifications",
+        "Приглушение": "Ducking"
+      },
+      "settings": {
+        "musicApps": {
+          "title": "Music apps",
+          "description": "One per line, the first ones matter more. Everything else is ignored. Part of the name is enough."
+        },
+        "notifications": {
+          "title": "Show on track change"
+        },
+        "notifyPause": {
+          "title": "Show on pause and resume"
+        },
+        "showAlbum": {
+          "title": "Show the album"
+        },
+        "ducking": {
+          "title": "Lower the music",
+          "description": "When another app is playing."
+        },
+        "duckMode": {
+          "title": "Who lowers it",
+          "description": "Whitelist: only apps from the whitelist. Blacklist: everyone except the blacklist.",
+          "options": {
+            "whitelist": "Whitelist",
+            "blacklist": "Blacklist"
+          }
+        },
+        "duckApps": {
+          "title": "Whitelist",
+          "description": "One per line. Part of the process name is enough."
+        },
+        "duckIgnore": {
+          "title": "Blacklist",
+          "description": "These apps never lower the music."
+        },
+        "duckVolume": {
+          "title": "Volume while lowered, %"
+        },
+        "duckFadeMs": {
+          "title": "Fade, ms"
+        },
+        "duckReleaseSeconds": {
+          "title": "Restore after, seconds of silence"
+        },
+        "duckThreshold": {
+          "title": "Sensitivity, % of signal level",
+          "description": "Below this an app counts as silent."
+        }
+      }
+    }
+  }
 }

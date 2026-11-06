@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using QuantumHub.Contracts.Bus;
 using QuantumHub.Contracts.Proto;
 using QuantumHub.Core.Routing;
@@ -172,7 +173,7 @@ public sealed class PluginManager(Hub hub)
     {
         var info = new PluginInfo
         {
-            Manifest = entry.Manifest,
+            Manifest = ManifestLocalizer.Apply(entry.Manifest, Loc.Language),
             State = entry.State,
             Error = entry.Error,
             Enabled = entry.Enabled,
@@ -180,6 +181,14 @@ public sealed class PluginManager(Hub hub)
         };
         info.Dependents.Add(RequiredDependents(entry.Manifest.Id).Select(dependent => dependent.Manifest.Id));
         return info;
+    }
+
+    /// <summary>Сообщает работающим плагинам о смене языка.</summary>
+    public void NotifyLanguageChanged()
+    {
+        List<Entry> entries;
+        lock (_gate) entries = _entries.Values.ToList();
+        foreach (var entry in entries) entry.Loaded?.NotifyLanguageChanged();
     }
 
     /// <summary>Все возможные поставщики: плагины и подключённые клиенты.</summary>

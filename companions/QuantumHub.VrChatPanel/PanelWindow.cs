@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -21,7 +22,7 @@ public sealed class PanelWindow : Window
     private readonly TextBlock _error = new() { Foreground = Brushes.Salmon, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
     private readonly TextBox _status = Input();
     private readonly TextBox _chat = Input();
-    private readonly CheckBox _sending = new() { Content = "Отправлять в VRChat", Foreground = Brushes.White, Margin = new Thickness(0, 8, 0, 0) };
+    private readonly CheckBox _sending = new() { Content = Loc.T("Отправлять в VRChat", "Send to VRChat"), Foreground = Brushes.White, Margin = new Thickness(0, 8, 0, 0) };
     private readonly ListBox _statuses = new()
     {
         Background = Card,
@@ -49,14 +50,14 @@ public sealed class PanelWindow : Window
         Left = area.Right - Width - 24;
         Top = area.Top + 140;
 
-        var setStatus = Action("Поставить");
+        var setStatus = Action(Loc.T("Поставить", "Set"));
         setStatus.Click += async (_, _) => await SetStatusAsync();
         _status.KeyDown += async (_, e) =>
         {
             if (e.Key == Key.Enter) await SetStatusAsync();
         };
 
-        var send = Action("Отправить");
+        var send = Action(Loc.T("Отправить", "Send"));
         send.Click += async (_, _) => await SendAsync();
         _chat.KeyDown += async (_, e) =>
         {
@@ -76,11 +77,11 @@ public sealed class PanelWindow : Window
 
         var column = new StackPanel { Margin = new Thickness(12) };
         column.Children.Add(new Border { Background = Card, CornerRadius = new CornerRadius(8), Padding = new Thickness(10), MinHeight = 90, Child = _preview });
-        column.Children.Add(Label("Личный статус"));
+        column.Children.Add(Label(Loc.T("Личный статус", "Personal status")));
         column.Children.Add(Row(_status, setStatus));
         column.Children.Add(_statuses);
-        column.Children.Add(new TextBlock { Text = "Два щелчка ставят, Delete убирает", Foreground = Muted, FontSize = 11, Margin = new Thickness(0, 2, 0, 0) });
-        column.Children.Add(Label("Сообщение в чат"));
+        column.Children.Add(new TextBlock { Text = Loc.T("Два щелчка ставят, Delete убирает", "Double click sets, Delete removes"), Foreground = Muted, FontSize = 11, Margin = new Thickness(0, 2, 0, 0) });
+        column.Children.Add(Label(Loc.T("Сообщение в чат", "Chat message")));
         column.Children.Add(Row(_chat, send));
         column.Children.Add(_sending);
         column.Children.Add(_error);
@@ -96,7 +97,7 @@ public sealed class PanelWindow : Window
     public void Apply(ChatboxState state)
     {
         _applying = true;
-        _preview.Text = state.Preview.Length > 0 ? state.Preview : "Пока пусто";
+        _preview.Text = state.Preview.Length > 0 ? state.Preview : Loc.T("Пока пусто", "Nothing yet");
         _sending.IsChecked = state.Sending;
         if (!_status.IsKeyboardFocused) _status.Text = state.Status;
 

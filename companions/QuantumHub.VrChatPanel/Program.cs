@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using QuantumHub.Client;
 using QuantumHub.Contracts.Bus;
+using QuantumHub.Contracts.Ui;
 using QuantumHub.ProtoMemProtocol;
 
 namespace QuantumHub.VrChatPanel;
@@ -25,6 +26,9 @@ internal static class Program
     {
         var index = Array.IndexOf(args, "--instance");
         var instance = index >= 0 && index + 1 < args.Length ? args[index + 1] : HubEndpoint.DefaultInstance;
+
+        var language = Array.IndexOf(args, "--language");
+        if (language >= 0 && language + 1 < args.Length) Loc.Language = args[language + 1];
 
         using var single = new Mutex(true, $@"Local\QuantumHub.VrChatPanel.{instance}", out var isFirst);
         if (!isFirst) return 1;

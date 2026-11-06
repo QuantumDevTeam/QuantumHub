@@ -86,6 +86,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
+### OpenVR and OpenVR.NET
+
+The SteamVR panel ships `openvr_api.dll` by Valve Corporation (BSD 3-Clause, <https://github.com/ValveSoftware/openvr>)
+and `OpenVR.NET` by PeriTheGee (MIT, <https://github.com/Flutterish/OpenVR.NET>).
+
 ## Used only to build and test
 
 These tools are not part of a published build.

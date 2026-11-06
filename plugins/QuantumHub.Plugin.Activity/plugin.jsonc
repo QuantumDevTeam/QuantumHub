@@ -33,5 +33,23 @@
       "description": "Если запущен любой из них, значит VR активен. По одному на строку.",
       "default": [ "vrserver", "vrmonitor" ]
     }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "description": "Knows which window is focused, which programs are running and whether you are away. Shares it with other plugins.",
+      "settings": {
+        "includeTitle": {
+          "title": "Window title",
+          "description": "Send the title along with the process name. Titles can contain private things."
+        },
+        "idleSeconds": {
+          "title": "Count as away after, seconds"
+        },
+        "vrProcesses": {
+          "title": "VR processes",
+          "description": "If any of these is running, VR is active. One per line."
+        }
+      }
+    }
+  }
 }

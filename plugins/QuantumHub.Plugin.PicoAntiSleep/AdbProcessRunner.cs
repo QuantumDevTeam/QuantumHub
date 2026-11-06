@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Diagnostics;
 
 namespace QuantumHub.Plugin.PicoAntiSleep;
@@ -15,7 +16,7 @@ public sealed class AdbProcessRunner(Func<string?> findAdb) : IAdbRunner
     /// <param name="token">Отмена.</param>
     public async Task StartServerAsync(CancellationToken token)
     {
-        var path = findAdb() ?? throw new FileNotFoundException("adb.exe не найден. Укажи путь в настройках.");
+        var path = findAdb() ?? throw new FileNotFoundException(Loc.T("adb.exe не найден. Укажи путь в настройках.", "adb.exe was not found. Set the path in the settings."));
         using var process = Process.Start(new ProcessStartInfo(path, "start-server")
         {
             UseShellExecute = false,
@@ -30,7 +31,7 @@ public sealed class AdbProcessRunner(Func<string?> findAdb) : IAdbRunner
     /// <inheritdoc/>
     public async Task<AdbResult> RunAsync(string arguments, CancellationToken token)
     {
-        var path = findAdb() ?? throw new FileNotFoundException("adb.exe не найден. Укажи путь в настройках.");
+        var path = findAdb() ?? throw new FileNotFoundException(Loc.T("adb.exe не найден. Укажи путь в настройках.", "adb.exe was not found. Set the path in the settings."));
         using var process = Process.Start(new ProcessStartInfo(path, arguments)
         {
             UseShellExecute = false,

@@ -23,5 +23,20 @@
       "description": "Показывать значения заглавными буквами.",
       "default": false
     }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "description": "Server half of the IPC test: takes a UUID and text from an external program, stores them and shows them here.",
+      "settings": {
+        "historySize": {
+          "title": "History size",
+          "description": "How many latest values to keep."
+        },
+        "uppercase": {
+          "title": "Uppercase",
+          "description": "Show values in capital letters."
+        }
+      }
+    }
+  }
 }

@@ -16,5 +16,15 @@
       "min": 1,
       "max": 30
     }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "description": "Shows which headphones and microphone are in use and lets plugins and external programs change them.",
+      "settings": {
+        "checkSeconds": {
+          "title": "Check for device changes every, seconds"
+        }
+      }
+    }
+  }
 }

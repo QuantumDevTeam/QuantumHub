@@ -97,6 +97,9 @@ public sealed class HubApi(Hub hub) : IEndpoint
             case "hub.sessions.list":
                 return HubPayload.Proto(hub.Server.ListSessions());
 
+            case "hub.sessions.history":
+                return HubPayload.Proto(hub.Server.History());
+
             case "hub.logs.get":
                 return HubPayload.Proto(new LogList { Entries = { hub.Log.Recent() } });
 
@@ -168,6 +171,19 @@ public sealed class HubApi(Hub hub) : IEndpoint
         var response = new UiResponse();
         var manifest = hub.Plugins.GetManifest(pluginId);
 
+        // Плагин по запросу запускается, когда его страницу открыли: это и есть запрос.
+        if (manifest?.Activation == "onDemand" && !hub.Plugins.IsRunning(pluginId))
+        {
+            try
+            {
+                await hub.Plugins.EnsureStartedAsync(pluginId).WaitAsync(token);
+            }
+            catch (HubCallException ex)
+            {
+                hub.Log.Warning($"{pluginId} did not start for its page: {ex.Message}");
+            }
+        }
+
         // Интерфейс может отдавать и подключённый клиент, поэтому спрашиваем всех, кто жив.
         if (hub.Plugins.IsRunning(pluginId) || hub.Router.IsRegistered(pluginId))
         {
@@ -206,9 +222,10 @@ public sealed class HubApi(Hub hub) : IEndpoint
     };
 
     /// <summary>Строит страницу, которую плагин с объявленными настройками получает без единой строки кода.</summary>
-    private static UiPage BuildSettingsPage(PluginManifest manifest)
+    private static UiPage BuildSettingsPage(PluginManifest source)
     {
-        var page = Ui.Page("settings", "Настройки", "E713");
+        var manifest = Plugins.ManifestLocalizer.Apply(source, Loc.Language);
+        var page = Ui.Page("settings", Loc.T("Настройки", "Settings"), "E713");
         var group = string.Empty;
         foreach (var setting in manifest.Settings)
         {
@@ -225,7 +242,10 @@ public sealed class HubApi(Hub hub) : IEndpoint
                     .Prop("min", setting.Min.ToString(System.Globalization.CultureInfo.InvariantCulture))
                     .Prop("max", setting.Max.ToString(System.Globalization.CultureInfo.InvariantCulture)),
                 "number" => Ui.Node("number", setting.Key),
-                "choice" => Ui.Node("choice", setting.Key).Prop("options", string.Join('\n', setting.Options)),
+                "choice" => Ui.Node("choice", setting.Key)
+                    .Prop("options", string.Join('\n', setting.Options))
+                    .Prop("labels", string.Join('\n', setting.Options.Select(option =>
+                        setting.OptionLabels.TryGetValue(option, out var label) ? label : option))),
                 "list" => Ui.Node("textbox", setting.Key).Prop("multiline", "true"),
                 "secret" => Ui.Node("password", setting.Key),
                 _ => Ui.Node("textbox", setting.Key),

@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using Microsoft.Win32;
@@ -85,7 +86,7 @@ internal static class ShellIntegration
         using (var key = Registry.CurrentUser.CreateSubKey(FileExtension)) key.SetValue(null, "QuantumHub.Plugin");
         using (var key = Registry.CurrentUser.CreateSubKey(FileClass))
         {
-            key.SetValue(null, "Плагин QuantumHub");
+            key.SetValue(null, Loc.T("Плагин QuantumHub", "QuantumHub plugin"));
             using var icon = key.CreateSubKey("DefaultIcon");
             icon.SetValue(null, $"\"{gui}\",0");
             using var command = key.CreateSubKey(@"shell\open\command");

@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using QuantumHub.Contracts.Bus;
@@ -56,5 +57,5 @@ public abstract class HubPage : UserControl
     /// <param name="panel">Панель.</param>
     /// <param name="message">Текст.</param>
     protected static void ShowError(Panel panel, string message) =>
-        panel.Children.Insert(0, new InfoBar { IsOpen = true, Severity = InfoBarSeverity.Error, Title = "Не получилось", Message = message });
+        panel.Children.Insert(0, new InfoBar { IsOpen = true, Severity = InfoBarSeverity.Error, Title = Loc.T("Не получилось", "Something went wrong"), Message = message });
 }

@@ -26,7 +26,7 @@ external community contributors under the terms described in [CLA.md](CLA.md).
 
 ## Установка
 
-Запусти `QuantumHub-Setup-<версия>.exe`. Больше ничего не нужно: .NET лежит внутри, права администратора не требуются.
+Скачай `QuantumHub-Setup-<версия>.exe` со [страницы релизов](https://github.com/QuantumDevTeam/QuantumHub/releases) и запусти. Больше ничего не нужно: .NET лежит внутри, права администратора не требуются.
 Программа встанет в `%LOCALAPPDATA%\Programs\QuantumHub` со всеми плагинами и запустится сама.
 
 - **Сервис** отдельно запускать не надо: его поднимает окно, а если он упал, поднимает снова.
@@ -156,7 +156,7 @@ Commercial use of QuantumHub or derivative works is prohibited without explicit 
 permission from the project owner.
 
 Official license text:
-https://polyformproject.org/licenses/noncommercial/1.0.0/
+https://polyformproject.org/licenses/noncommercial/1.0.0
 
 See [LICENSE](LICENSE.md) for full terms and [THIRD-PARTY-NOTICES](THIRD-PARTY-NOTICES.md) for
 the components QuantumHub is built on.

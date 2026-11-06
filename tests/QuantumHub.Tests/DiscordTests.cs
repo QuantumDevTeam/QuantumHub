@@ -81,11 +81,27 @@ public class DiscordTests
             {
                 ["cmd"] = "DISPATCH",
                 ["evt"] = "READY",
-                ["data"] = new JsonObject { ["user"] = new JsonObject { ["id"] = "42", ["username"] = "timas" } },
+                ["data"] = new JsonObject { ["user"] = new JsonObject { ["id"] = "42", ["username"] = "tester" } },
             });
         }
 
-        private Task SendAsync(Stream server, JsonObject frame) => DiscordFrame.WriteAsync(server, DiscordOpcode.Frame, frame, CancellationToken.None);
+        /// <summary>Настоящий Discord пишет кадры по одному, а здесь пишут и ответы, и сам тест.</summary>
+        private readonly SemaphoreSlim _writeGate = new(1, 1);
+
+        private async Task WriteFrameAsync(Stream server, DiscordOpcode opcode, JsonObject frame)
+        {
+            await _writeGate.WaitAsync();
+            try
+            {
+                await DiscordFrame.WriteAsync(server, opcode, frame, CancellationToken.None);
+            }
+            finally
+            {
+                _writeGate.Release();
+            }
+        }
+
+        private Task SendAsync(Stream server, JsonObject frame) => WriteFrameAsync(server, DiscordOpcode.Frame, frame);
 
         private async Task RespondAsync(Stream server, JsonObject request)
         {
@@ -147,7 +163,7 @@ public class DiscordTests
         public Task PushAsync(string name, JsonObject data) =>
             SendAsync(_current!, new JsonObject { ["cmd"] = "DISPATCH", ["evt"] = name, ["data"] = data });
 
-        public Task PingAsync() => DiscordFrame.WriteAsync(_current!, DiscordOpcode.Ping, new JsonObject { ["n"] = 1 }, CancellationToken.None);
+        public Task PingAsync() => WriteFrameAsync(_current!, DiscordOpcode.Ping, new JsonObject { ["n"] = 1 });
 
         public void Drop() => _current!.Dispose();
 
@@ -264,7 +280,7 @@ public class DiscordTests
 
         await Until(() => run.Engine.State.Connected);
 
-        Assert.Equal("timas", run.Engine.State.User);
+        Assert.Equal("tester", run.Engine.State.User);
         Assert.False(run.Engine.State.Authorized);
         Assert.False(_discord.Saw("AUTHORIZE"));
     }

@@ -9,6 +9,15 @@ namespace QuantumHub.Plugin.PicoAntiSleep;
 /// <param name="Active">Запущен ли SteamVR.</param>
 public sealed record VrSession(bool Active);
 
+/// <summary>Ответ sleep.get и sleep.set и тело события vr.pico.sleep.changed.</summary>
+/// <param name="Enabled">Включён ли режим.</param>
+/// <param name="Status">Что сейчас происходит.</param>
+public sealed record SleepState(bool Enabled, string Status);
+
+/// <summary>Запрос sleep.set.</summary>
+/// <param name="Enabled">Включить или выключить.</param>
+public sealed record SleepRequest(bool Enabled);
+
 /// <summary>
 /// Аддон к VR Switcher: не даёт шлему Pico заснуть. Здесь только связь с хабом, цикл лежит в
 /// <see cref="AntiSleepEngine"/>. Про SteamVR он узнаёт от другого плагина, через возможность vr.session.
@@ -16,6 +25,9 @@ public sealed record VrSession(bool Active);
 [HubPlugin]
 public sealed class PicoAntiSleepPlugin : IHubPlugin, IUiProvider
 {
+    /// <summary>Топик смены состояния.</summary>
+    public const string StateTopic = "vr.pico.sleep.changed";
+
     private IPluginContext _context = null!;
     private AntiSleepEngine _engine = null!;
     private IDisposable? _subscription;
@@ -29,6 +41,14 @@ public sealed class PicoAntiSleepPlugin : IHubPlugin, IUiProvider
         _engine.StatusChanged += PushState;
         PushState();
 
+        context.Bus.Handle("sleep.get", (_, _) => ValueTask.FromResult(HubPayload.Json(State())));
+        context.Bus.Handle("sleep.set", async (request, _) =>
+        {
+            if (request.Payload.AsJson<SleepRequest>()?.Enabled == true) await _engine.StartAsync();
+            else await _engine.StopAsync();
+            return HubPayload.Json(State());
+        });
+
         _subscription = await context.Bus.SubscribeAsync("vr.session.changed", e => OnSession(e.Payload.AsJson<VrSession>()), token);
 
         var current = await context.Bus.CallAsync("cap:vr.session", "session.get", token: token);
@@ -41,6 +61,8 @@ public sealed class PicoAntiSleepPlugin : IHubPlugin, IUiProvider
         _subscription?.Dispose();
         await _engine.StopAsync();
     }
+
+    private SleepState State() => new(_engine.IsRunning, _engine.Status);
 
     private AntiSleepOptions ReadOptions()
     {
@@ -57,16 +79,17 @@ public sealed class PicoAntiSleepPlugin : IHubPlugin, IUiProvider
     private void PushState()
     {
         _context.Ui.Set("status", _engine.Status);
+        _ = _context.Bus.PublishAsync(StateTopic, HubPayload.Json(State()));
     }
 
     /// <inheritdoc/>
     public IEnumerable<UiPage> GetPages()
     {
-        yield return Ui.Page("main", "Сон", "E708",
-            Ui.Card("Состояние", null, Ui.BoundText("status")),
+        yield return Ui.Page("main", Loc.T("Сон", "Sleep"), "E708",
+            Ui.Card(Loc.T("Состояние", "Status"), null, Ui.BoundText("status")),
             Ui.Row(
-                Ui.Button("start", "Включить", accent: true),
-                Ui.Button("stop", "Выключить")));
+                Ui.Button("start", Loc.T("Включить", "Turn on"), accent: true),
+                Ui.Button("stop", Loc.T("Выключить", "Turn off"))));
     }
 
     /// <inheritdoc/>

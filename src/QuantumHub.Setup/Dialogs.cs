@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Runtime.InteropServices;
 
 namespace QuantumHub.Setup;
@@ -44,7 +45,7 @@ internal static class Dialogs
     {
         var acceptText = Marshal.StringToHGlobalUni(accept);
         // Подпись на стандартной кнопке зависит от языка Windows, а весь остальной текст здесь русский.
-        var cancelText = Marshal.StringToHGlobalUni("Отмена");
+        var cancelText = Marshal.StringToHGlobalUni(Loc.T("Отмена", "Cancel"));
         var size = Marshal.SizeOf<TaskDialogButton>();
         var buttons = Marshal.AllocHGlobal(size * 2);
         try

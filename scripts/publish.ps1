@@ -62,12 +62,14 @@ $plugins = @{
     'qh.ui.notify'           = 'plugins\QuantumHub.Plugin.Notifications\QuantumHub.Plugin.Notifications.csproj'
     'qh.music'               = 'plugins\QuantumHub.Plugin.Music\QuantumHub.Plugin.Music.csproj'
     'qh.discord'             = 'plugins\QuantumHub.Plugin.Discord\QuantumHub.Plugin.Discord.csproj'
+    'qh.vr.dashboard'        = 'plugins\QuantumHub.Plugin.VrDashboard\QuantumHub.Plugin.VrDashboard.csproj'
     'qh.vrchat.osc'          = 'plugins\QuantumHub.Plugin.VrChatOsc\QuantumHub.Plugin.VrChatOsc.csproj'
     'qh.vrchat.chatbox'      = 'plugins\QuantumHub.Plugin.Chatbox\QuantumHub.Plugin.Chatbox.csproj'
 }
 $companions = @{
     'qh.ui.notify'      = 'companions\QuantumHub.Notifier\QuantumHub.Notifier.csproj'
     'qh.vrchat.chatbox' = 'companions\QuantumHub.VrChatPanel\QuantumHub.VrChatPanel.csproj'
+    'qh.vr.dashboard'   = 'companions\QuantumHub.VrDashboard\QuantumHub.VrDashboard.csproj'
 }
 if (-not $NoGui) { PublishApp 'src\QuantumHub.Gui\QuantumHub.Gui.csproj' (Join-Path $Output 'gui') }
 

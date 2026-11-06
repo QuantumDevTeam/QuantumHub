@@ -1,3 +1,5 @@
+using QuantumHub.Contracts.Ui;
+
 namespace QuantumHub.Plugin.PicoAntiSleep;
 
 /// <summary>Настройки, которые движок читает на каждом шаге.</summary>
@@ -29,7 +31,7 @@ public sealed class AntiSleepEngine(
     public bool IsRunning => _loop is not null;
 
     /// <summary>Что сейчас происходит, для показа пользователю.</summary>
-    public string Status { get; private set; } = "Выключен";
+    public string Status { get; private set; } = Loc.T("Выключен", "Off");
 
     /// <summary>Сменился статус.</summary>
     public event Action? StatusChanged;
@@ -71,7 +73,7 @@ public sealed class AntiSleepEngine(
             _gate.Release();
         }
 
-        SetStatus("Выключен");
+        SetStatus(Loc.T("Выключен", "Off"));
     }
 
     private async Task RunAsync(CancellationToken token)
@@ -87,19 +89,19 @@ public sealed class AntiSleepEngine(
                     serial ??= await adb.ConnectAsync(settings.Address, token);
                     if (serial is null)
                     {
-                        SetStatus($"Нет связи с {settings.Address}. Если шлем перезагружался, подключи его кабелем один раз");
+                        SetStatus(Loc.T($"Нет связи с {settings.Address}. Если шлем перезагружался, подключи его кабелем один раз", $"No connection to {settings.Address}. If the headset restarted, connect it by cable once"));
                         await delay(RetryDelay, token);
                         continue;
                     }
 
                     if (await adb.WakeAsync(serial, token))
                     {
-                        SetStatus($"Включён: {serial}, раз в {settings.Interval.TotalSeconds:0} с");
+                        SetStatus(Loc.T($"Включён: {serial}, раз в {settings.Interval.TotalSeconds:0} с", $"On: {serial}, every {settings.Interval.TotalSeconds:0} s"));
                         await delay(settings.Interval, token);
                         continue;
                     }
 
-                    SetStatus("Связь потеряна, подключаемся заново");
+                    SetStatus(Loc.T("Связь потеряна, подключаемся заново", "Connection lost, reconnecting"));
                     await adb.DisconnectAsync(serial, token);
                     serial = null;
                     await delay(TimeSpan.FromSeconds(2), token);

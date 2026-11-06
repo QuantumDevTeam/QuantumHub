@@ -127,7 +127,7 @@ public sealed class DiscordPlugin : IHubPlugin, IUiProvider
         }
         catch (TimeoutException)
         {
-            throw new HubCallException(StatusCode.Timeout, "Discord не ответил вовремя.");
+            throw new HubCallException(StatusCode.Timeout, Loc.T("Discord не ответил вовремя.", "Discord did not answer in time."));
         }
     }
 
@@ -159,28 +159,28 @@ public sealed class DiscordPlugin : IHubPlugin, IUiProvider
         var ui = _context.Ui;
         ui.Set("status", state.Status);
         ui.Set("user", state.User ?? "—");
-        ui.Set("voice", $"{(state.Muted ? "микрофон выключен" : "микрофон включён")}, {(state.Deafened ? "звук выключен" : "звук включён")}");
-        ui.Set("channel", state.Channel is { } channel ? (channel.GuildName is null ? channel.Name : $"{channel.GuildName} / {channel.Name}") : "не в канале");
-        ui.Set("ping", state.PingMs is { } ping ? $"{ping:0} мс" : "—");
+        ui.Set("voice", $"{(state.Muted ? Loc.T("микрофон выключен", "mic off") : Loc.T("микрофон включён", "mic on"))}, {(state.Deafened ? Loc.T("звук выключен", "sound off") : Loc.T("звук включён", "sound on"))}");
+        ui.Set("channel", state.Channel is { } channel ? (channel.GuildName is null ? channel.Name : $"{channel.GuildName} / {channel.Name}") : Loc.T("не в канале", "not in a channel"));
+        ui.Set("ping", state.PingMs is { } ping ? Loc.T($"{ping:0} мс", $"{ping:0} ms") : "—");
         ui.Set("members", string.Join('\n', state.Channel?.Members.Select(member =>
-            $"{(member.Speaking ? "● " : "  ")}{member.Name}{(member.Muted ? " (без микрофона)" : string.Empty)}") ?? []));
+            $"{(member.Speaking ? "● " : "  ")}{member.Name}{(member.Muted ? Loc.T(" (без микрофона)", " (muted)") : string.Empty)}") ?? []));
     }
 
     /// <inheritdoc/>
     public IEnumerable<UiPage> GetPages()
     {
         yield return Ui.Page("main", "Discord", "E8F2",
-            Ui.Card("Состояние", null, Ui.BoundText("status")),
-            Ui.KeyValue("Пользователь", "user"),
-            Ui.KeyValue("Голос", "voice"),
-            Ui.KeyValue("Канал", "channel"),
-            Ui.KeyValue("Пинг", "ping"),
+            Ui.Card(Loc.T("Состояние", "Status"), null, Ui.BoundText("status")),
+            Ui.KeyValue(Loc.T("Пользователь", "User"), "user"),
+            Ui.KeyValue(Loc.T("Голос", "Voice"), "voice"),
+            Ui.KeyValue(Loc.T("Канал", "Channel"), "channel"),
+            Ui.KeyValue(Loc.T("Пинг", "Ping"), "ping"),
             Ui.Row(
-                Ui.Button("authorize", "Авторизовать", accent: true),
-                Ui.Button("mute", "Микрофон"),
-                Ui.Button("deafen", "Звук"),
-                Ui.Button("reconnect", "Переподключить")),
-            Ui.Text("Участники канала", "subtitle"),
+                Ui.Button("authorize", Loc.T("Авторизовать", "Authorize"), accent: true),
+                Ui.Button("mute", Loc.T("Микрофон", "Microphone")),
+                Ui.Button("deafen", Loc.T("Звук", "Sound")),
+                Ui.Button("reconnect", Loc.T("Переподключить", "Reconnect"))),
+            Ui.Text(Loc.T("Участники канала", "Channel members"), "subtitle"),
             Ui.BoundText("members", "mono"));
     }
 

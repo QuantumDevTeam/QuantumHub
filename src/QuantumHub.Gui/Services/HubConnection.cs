@@ -1,8 +1,10 @@
+using QuantumHub.Contracts.Ui;
 using System.Diagnostics;
 using Google.Protobuf;
 using Microsoft.UI.Dispatching;
 using QuantumHub.Client;
 using QuantumHub.Contracts.Bus;
+using QuantumHub.Contracts.Proto;
 using QuantumHub.ProtoMemProtocol;
 
 namespace QuantumHub.Gui.Services;
@@ -29,6 +31,8 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
     private bool _stopRequested;
     /// <summary>Цикл перезапуска уже идёт.</summary>
     private bool _restarting;
+    /// <summary>Пользователь попросил перезапуск: хаб поднимается и при выключенной настройке.</summary>
+    private bool _restartRequested;
 
     /// <summary>Клиент. <see langword="null"/>, пока первое подключение не удалось.</summary>
     public HubClient? Client { get; private set; }
@@ -73,19 +77,52 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
             catch (UnauthorizedAccessException)
             {
                 // Такое бывает, когда хаб и GUI запущены с разными правами: один от администратора, другой нет.
-                Report("Хаб запущен с другими правами. Закрой его и запусти QuantumHub без прав администратора.");
+                Report(Loc.T("Хаб запущен с другими правами. Закрой его и запусти QuantumHub без прав администратора.", "The hub runs with different rights. Close it and start QuantumHub without administrator rights."));
                 await Task.Delay(RelaunchDelay);
             }
             catch (Exception ex) when (ex is TimeoutException or IOException or OperationCanceledException)
             {
-                if (attempt % LaunchEvery == 0 && !_stopRequested) LaunchService();
+                if (attempt % LaunchEvery == 0 && !_stopRequested && GuiSettings.Current.StartHub) LaunchService();
                 await Task.Delay(RetryDelay);
             }
         }
 
+        await SyncLanguageAsync();
+        await Client.SubscribeAsync("hub.language.changed", e => Post(() => SetLanguage(e.Payload.AsText())));
+
         Client.Disconnected += () => Post(OnDisconnected);
         Client.Reconnected += () => Post(OnConnected);
         Post(OnConnected);
+    }
+
+    /// <summary>Настройка языка, которую хранит хаб.</summary>
+    public string LanguageSetting { get; private set; } = Loc.Auto;
+
+    /// <summary>Сменился язык. Срабатывает на потоке интерфейса.</summary>
+    public event Action? LanguageChanged;
+
+    /// <summary>Берёт язык у хаба: настройка у всей программы одна.</summary>
+    private async Task SyncLanguageAsync()
+    {
+        if (await TryCallAsync<HubStatus>("hub.status", new PluginRef()) is not { } status) return;
+        LanguageSetting = status.LanguageSetting;
+        Post(() => SetLanguage(status.Language));
+    }
+
+    /// <summary>Применяет язык.</summary>
+    private void SetLanguage(string language)
+    {
+        if (Loc.Language == language) return;
+        Loc.Language = language;
+        LanguageChanged?.Invoke();
+    }
+
+    /// <summary>Меняет настройку языка.</summary>
+    /// <param name="setting">"auto", "ru" или "en".</param>
+    public async Task SetLanguageSettingAsync(string setting)
+    {
+        LanguageSetting = setting;
+        await TryRunAsync("hub.config.set", new ConfigSetRequest { PluginId = "hub", Key = "language", Json = $"\"{setting}\"" });
     }
 
     /// <summary>Связь есть.</summary>
@@ -100,6 +137,7 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
     {
         StateChanged?.Invoke(false);
         if (_stopRequested || _restarting) return;
+        if (!GuiSettings.Current.RestartHub && !_restartRequested) return;
 
         _restarting = true;
         try
@@ -113,6 +151,7 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
         finally
         {
             _restarting = false;
+            _restartRequested = false;
         }
     }
 
@@ -132,7 +171,7 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
         var path = FindService();
         if (path is null)
         {
-            Report($"Не найден {ServiceExe}. Переустанови QuantumHub или собери его командой scripts\\publish.ps1.");
+            Report(Loc.T($"Не найден {ServiceExe}. Переустанови QuantumHub или собери его командой scripts\\publish.ps1.", $"{ServiceExe} was not found. Reinstall QuantumHub or build it with scripts\\publish.ps1."));
             return;
         }
 
@@ -151,7 +190,7 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)
         {
-            Report($"Не удалось запустить хаб: {ex.Message}");
+            Report(Loc.T($"Не удалось запустить хаб: {ex.Message}", $"Could not start the hub: {ex.Message}"));
         }
     }
 
@@ -182,6 +221,21 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
         }
 
         return null;
+    }
+
+    /// <summary>Перезапускает хаб.</summary>
+    public async Task RestartHubAsync()
+    {
+        if (!IsConnected) return;
+        _restartRequested = true;
+        try
+        {
+            await Client!.CallAsync(Envelopes.HubTarget, "hub.shutdown");
+        }
+        catch (HubCallException)
+        {
+            // Он вполне может отключиться раньше, чем ответит.
+        }
     }
 
     /// <summary>Просит хаб завершить работу.</summary>
@@ -224,7 +278,7 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
     /// <returns>Ответ либо текст ошибки.</returns>
     public async Task<(T? Reply, string? Error)> CallWithErrorAsync<T>(string method, IMessage request) where T : class, IMessage<T>, new()
     {
-        if (!IsConnected) return (null, ServiceProblem ?? "Хаб ещё запускается. Попробуй через пару секунд.");
+        if (!IsConnected) return (null, ServiceProblem ?? Loc.T("Хаб ещё запускается. Попробуй через пару секунд.", "The hub is still starting. Try again in a couple of seconds."));
         try
         {
             return (await Client!.CallAsync<T>(Envelopes.HubTarget, method, request), null);
@@ -241,7 +295,7 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
     /// <returns>Текст ошибки или <see langword="null"/> при успехе.</returns>
     public async Task<string?> TryRunAsync(string method, IMessage request)
     {
-        if (!IsConnected) return ServiceProblem ?? "Хаб ещё запускается. Попробуй через пару секунд.";
+        if (!IsConnected) return ServiceProblem ?? Loc.T("Хаб ещё запускается. Попробуй через пару секунд.", "The hub is still starting. Try again in a couple of seconds.");
         try
         {
             await Client!.CallAsync(Envelopes.HubTarget, method, HubPayload.Proto(request));

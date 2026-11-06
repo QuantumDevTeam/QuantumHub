@@ -6,6 +6,7 @@
   "description": "Не даёт шлему Pico заснуть: раз в минуту посылает ему сигнал по ADB через Wi-Fi.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.PicoAntiSleep.dll" },
+  "provides": [ { "name": "vr.pico.sleep", "version": "1.0.0" } ],
   "dependencies": [ { "capability": "vr.session", "version": ">=1.0.0" } ],
   "settings": [
     {
@@ -41,5 +42,30 @@
       "description": "Пусто значит искать в папке плагина, в PATH и в Android SDK.",
       "default": ""
     }
-  ]
+  ],
+  "locales": {
+    "en": {
+      "description": "Keeps a Pico headset awake: sends it a signal over ADB and Wi-Fi once a minute.",
+      "groups": {
+        "Шлем": "Headset"
+      },
+      "settings": {
+        "address": {
+          "title": "Headset IP",
+          "description": "The port is optional, 5555 by default."
+        },
+        "intervalSeconds": {
+          "title": "Interval, seconds"
+        },
+        "autoWithVr": {
+          "title": "Turn on with SteamVR",
+          "description": "Otherwise only by button."
+        },
+        "adbPath": {
+          "title": "Path to adb.exe",
+          "description": "Empty means look in the plugin folder, PATH and the Android SDK."
+        }
+      }
+    }
+  }
 }

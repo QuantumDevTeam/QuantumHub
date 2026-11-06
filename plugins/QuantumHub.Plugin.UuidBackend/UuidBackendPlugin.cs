@@ -85,7 +85,7 @@ public sealed class UuidBackendPlugin : IHubPlugin, IUiProvider
     {
         var config = _context.Config;
         var ui = _context.Ui;
-        ui.Set("value", Display(config.Get("lastValue", "ещё ничего не приходило")!));
+        ui.Set("value", Display(config.Get("lastValue", Loc.T("ещё ничего не приходило", "nothing received yet"))!));
         ui.Set("kind", config.Get("lastKind", "—")!);
         ui.Set("source", config.Get("lastSource", "—")!);
         ui.Set("total", config.Get("total", 0).ToString());
@@ -95,16 +95,16 @@ public sealed class UuidBackendPlugin : IHubPlugin, IUiProvider
     /// <inheritdoc/>
     public IEnumerable<UiPage> GetPages()
     {
-        yield return Ui.Page("main", "Значения", "E8D2",
-            Ui.Card("Последнее значение", "То, что прислала внешняя программа.",
+        yield return Ui.Page("main", Loc.T("Значения", "Values"), "E8D2",
+            Ui.Card(Loc.T("Последнее значение", "Latest value"), Loc.T("То, что прислала внешняя программа.", "What the external program sent."),
                 Ui.BoundText("value", "mono")),
-            Ui.KeyValue("Тип", "kind"),
-            Ui.KeyValue("Отправитель", "source"),
-            Ui.KeyValue("Всего получено", "total"),
+            Ui.KeyValue(Loc.T("Тип", "Type"), "kind"),
+            Ui.KeyValue(Loc.T("Отправитель", "Sender"), "source"),
+            Ui.KeyValue(Loc.T("Всего получено", "Total received"), "total"),
             Ui.Row(
-                Ui.Button("generate", "Сгенерировать здесь", accent: true),
-                Ui.Button("clear", "Очистить историю")),
-            Ui.Text("История", "subtitle"),
+                Ui.Button("generate", Loc.T("Сгенерировать здесь", "Generate here"), accent: true),
+                Ui.Button("clear", Loc.T("Очистить историю", "Clear history"))),
+            Ui.Text(Loc.T("История", "History"), "subtitle"),
             Ui.BoundText("history", "mono"));
     }
 

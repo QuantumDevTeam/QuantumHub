@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Text.Json.Nodes;
 
 namespace QuantumHub.Plugin.Discord;
@@ -118,7 +119,7 @@ public sealed class DiscordEngine(
                 var settings = options();
                 if (!settings.AutoConnect || string.IsNullOrWhiteSpace(settings.ClientId))
                 {
-                    Update(state => new DiscordState(Status: settings.AutoConnect ? "Укажи Client ID в настройках" : "Автоподключение выключено"));
+                    Update(state => new DiscordState(Status: settings.AutoConnect ? Loc.T("Укажи Client ID в настройках", "Set the Client ID in the settings") : Loc.T("Автоподключение выключено", "Auto connect is off")));
                     await _wake.WaitAsync(token);
                     continue;
                 }
@@ -151,7 +152,7 @@ public sealed class DiscordEngine(
 
         if (stream is null)
         {
-            Update(_ => new DiscordState(Status: "Discord не запущен"));
+            Update(_ => new DiscordState(Status: Loc.T("Discord не запущен", "Discord is not running")));
             return;
         }
 
@@ -163,11 +164,11 @@ public sealed class DiscordEngine(
             _rpc = rpc;
             var user = ready["user"];
             Update(_ => new DiscordState(true, User: user?["username"]?.GetValue<string>(), UserId: user?["id"]?.GetValue<string>(),
-                Status: "Подключено. Для голоса и канала нужна авторизация"));
+                Status: Loc.T("Подключено. Для голоса и канала нужна авторизация", "Connected. Voice and channel need authorization")));
 
             await TryRestoreAuthorizationAsync(rpc, settings, token);
             await rpc.Closed.WaitAsync(token);
-            Update(_ => new DiscordState(Status: "Соединение с Discord потеряно"));
+            Update(_ => new DiscordState(Status: Loc.T("Соединение с Discord потеряно", "Lost connection to Discord")));
         }
         catch (Exception ex) when (ex is DiscordRpcException or TimeoutException)
         {
@@ -200,13 +201,13 @@ public sealed class DiscordEngine(
             catch (Exception refreshFailure) when (refreshFailure is DiscordRpcException or HttpRequestException)
             {
                 store.Save(null);
-                Update(state => state with { Status = "Авторизация устарела, авторизуйся заново" });
+                Update(state => state with { Status = Loc.T("Авторизация устарела, авторизуйся заново", "Authorization expired, authorize again") });
             }
         }
         catch (DiscordRpcException)
         {
             store.Save(null);
-            Update(state => state with { Status = "Авторизация устарела, авторизуйся заново" });
+            Update(state => state with { Status = Loc.T("Авторизация устарела, авторизуйся заново", "Authorization expired, authorize again") });
         }
     }
 
@@ -218,14 +219,14 @@ public sealed class DiscordEngine(
         var rpc = Connection();
         var settings = options();
         if (string.IsNullOrWhiteSpace(settings.ClientSecret))
-            throw new DiscordRpcException(0, "Укажи Client Secret в настройках.");
+            throw new DiscordRpcException(0, Loc.T("Укажи Client Secret в настройках.", "Set the Client Secret in the settings."));
 
-        Update(state => state with { Status = "Подтверди доступ в окне Discord" });
+        Update(state => state with { Status = Loc.T("Подтверди доступ в окне Discord", "Confirm access in the Discord window") });
         var response = await rpc.CommandAsync("AUTHORIZE",
             new JsonObject { ["client_id"] = settings.ClientId, ["scopes"] = new JsonArray(settings.Scopes.Select(scope => (JsonNode?)scope).ToArray()) },
             timeout: AuthorizeTimeout, token: token);
 
-        var code = response?["code"]?.GetValue<string>() ?? throw new DiscordRpcException(0, "Discord не вернул код.");
+        var code = response?["code"]?.GetValue<string>() ?? throw new DiscordRpcException(0, Loc.T("Discord не вернул код.", "Discord returned no code."));
         var issued = await tokens.ExchangeAsync(code, settings, token);
         store.Save(issued);
         await AuthenticateAsync(rpc, issued.Access, token);
@@ -236,15 +237,15 @@ public sealed class DiscordEngine(
         await rpc.CommandAsync("AUTHENTICATE", new JsonObject { ["access_token"] = accessToken }, token: token);
         foreach (var name in GlobalEvents) await rpc.CommandAsync("SUBSCRIBE", eventName: name, token: token);
 
-        Update(state => state with { Authorized = true, Status = "Подключено" });
+        Update(state => state with { Authorized = true, Status = Loc.T("Подключено", "Connected") });
         ApplyVoice(await rpc.CommandAsync("GET_VOICE_SETTINGS", token: token));
         await RefreshChannelAsync(rpc, null);
     }
 
-    private DiscordRpcClient Connection() => _rpc ?? throw new DiscordRpcException(0, "Нет связи с Discord.");
+    private DiscordRpcClient Connection() => _rpc ?? throw new DiscordRpcException(0, Loc.T("Нет связи с Discord.", "No connection to Discord."));
 
     private DiscordRpcClient AuthorizedConnection() =>
-        State.Authorized ? Connection() : throw new DiscordRpcException(4006, "Нужна авторизация: нажми её на странице плагина.");
+        State.Authorized ? Connection() : throw new DiscordRpcException(4006, Loc.T("Нужна авторизация: нажми её на странице плагина.", "Authorization is needed: press it on the plugin page."));
 
     /// <summary>Выполняет любую команду Discord RPC.</summary>
     /// <param name="command">Имя команды.</param>
