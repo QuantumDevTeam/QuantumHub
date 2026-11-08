@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>$(QhWindows)</TargetFramework>
+    <AssemblyName>quantumhub</AssemblyName>
+    <RootNamespace>QuantumHub.Cli</RootNamespace>
+    <RollForward>LatestPatch</RollForward>
+    <ApplicationIcon>../QuantumHub.Gui/Assets/app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- В релизе .NET лежит в папке dotnet рядом с программой, а CLI в её подпапке cli. -->
+  <PropertyGroup Condition="'$(QhPrivateRuntime)' == 'true'">
+    <AppHostDotNetSearch>AppRelative;Global</AppHostDotNetSearch>
+    <AppHostRelativeDotNet>..\dotnet</AppHostRelativeDotNet>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../QuantumHub.Client/QuantumHub.Client.csproj" />
+    <InternalsVisibleTo Include="QuantumHub.Tests" />
+  </ItemGroup>
+</Project>

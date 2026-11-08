@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
@@ -19,6 +20,9 @@ namespace QuantumHub.Core.Plugins;
 /// </remarks>
 public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginConfig, IPluginPaths, IPluginUiState
 {
+    /// <summary>Сколько плагин может приходить в себя после перезапуска зависимости.</summary>
+    private static readonly TimeSpan DependencyNoticeTimeout = TimeSpan.FromSeconds(10);
+
     private readonly Hub _hub;
     private readonly PluginPackage _package;
     /// <summary>Методы плагина.</summary>
@@ -32,6 +36,8 @@ public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginCo
     /// <summary>Экземпляр класса плагина.</summary>
     private IHubPlugin? _instance;
     private ulong _nextId;
+    /// <summary>Плагин начал останавливаться.</summary>
+    private volatile bool _stopped;
 
     /// <summary>Готовит плагин. Загрузка будет в <see cref="StartAsync"/>.</summary>
     /// <param name="hub">Хаб.</param>
@@ -41,7 +47,7 @@ public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginCo
         _hub = hub;
         _package = package;
         Logger = hub.Log.For(package.Manifest.Id);
-        _events = new EventPump(ex => Logger.Error("An event handler failed", ex));
+        _events = new EventPump(ex => Logger.Error(Loc.T("Обработчик события упал", "An event handler failed"), ex));
     }
 
     /// <summary>Id плагина.</summary>
@@ -79,11 +85,11 @@ public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginCo
     {
         var entry = Manifest.Service;
         if (entry is null || entry.Assembly.Length == 0)
-            throw new InvalidDataException("The manifest names no service assembly.");
+            throw new InvalidDataException(Loc.T("В манифесте не указана сборка плагина.", "The manifest names no service assembly."));
 
         var path = Path.GetFullPath(Path.Combine(_package.Directory, entry.Assembly));
         if (!path.StartsWith(Path.GetFullPath(_package.Directory) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("The service assembly must be inside the plugin folder.");
+            throw new InvalidDataException(Loc.T("Сборка плагина должна лежать в его папке.", "The service assembly must be inside the plugin folder."));
 
         _loadContext = new PluginLoadContext(path, Id);
         var assembly = _loadContext.LoadFromAssemblyPath(path);
@@ -91,8 +97,10 @@ public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginCo
         _instance = (IHubPlugin)Activator.CreateInstance(type)!;
 
         _hub.Config.Changed += OnConfigChanged;
-        _hub.Router.Register(Id, this);
         await _instance.StartAsync(this, token);
+
+        // Только теперь: до этого у плагина ещё нет методов, и вызовы должны ждать конца запуска, а не получать ошибку.
+        _hub.Router.Register(Id, this);
     }
 
     /// <summary>Находит класс плагина: по имени из манифеста, по [HubPlugin] или единственный реализующий интерфейс.</summary>
@@ -115,13 +123,14 @@ public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginCo
         var candidates = types.Where(t => t is { IsAbstract: false } && typeof(IHubPlugin).IsAssignableFrom(t)).ToList();
         return candidates.FirstOrDefault(t => t!.GetCustomAttribute<HubPluginAttribute>() is not null)
                ?? candidates.FirstOrDefault()
-               ?? throw new InvalidDataException($"'{assembly.GetName().Name}' has no class implementing IHubPlugin.");
+               ?? throw new InvalidDataException(Loc.T($"В '{assembly.GetName().Name}' нет класса, реализующего IHubPlugin.", $"'{assembly.GetName().Name}' has no class implementing IHubPlugin."));
     }
 
     /// <summary>Отключает плагин от хаба и останавливает его. Освобождает всё, что держит его типы.</summary>
     /// <param name="token">Отменяется по таймауту остановки.</param>
     public async Task StopAsync(CancellationToken token)
     {
+        _stopped = true;
         _hub.Router.Unregister(Id, this);
         _hub.Router.UnsubscribeAll(this);
         _hub.Config.Changed -= OnConfigChanged;
@@ -164,7 +173,24 @@ public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginCo
         }
         catch (Exception ex)
         {
-            Logger.Error("Language change failed", ex);
+            Logger.Error(Loc.T("Смена языка не удалась", "Language change failed"), ex);
+        }
+    }
+
+    /// <summary>Сообщает плагину, что его зависимость начала работу заново. Его ошибка остаётся его ошибкой.</summary>
+    /// <param name="providerId">Id зависимости.</param>
+    public async Task NotifyDependencyRestartedAsync(string providerId)
+    {
+        if (_instance is not IDependencyAware aware) return;
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+            timeout.CancelAfter(DependencyNoticeTimeout);
+            await aware.OnDependencyRestartedAsync(providerId, timeout.Token).WaitAsync(timeout.Token);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(Loc.T($"Реакция на перезапуск {providerId} не удалась", $"Reacting to the restart of {providerId} failed"), ex);
         }
     }
 
@@ -173,6 +199,9 @@ public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginCo
     /// <param name="token">Отмена.</param>
     public async Task<Envelope> RequestAsync(Envelope request, CancellationToken token)
     {
+        // Запрос нашёл этот экземпляр до того, как он ушёл из роутера. При перезапуске его примет новый.
+        if (_stopped && _hub.Plugins.IsRestarting(Id)) return await _hub.Router.RequestAsync(request, token);
+
         try
         {
             if (_handlers.TryGetValue(request.Method, out var handler))
@@ -193,7 +222,7 @@ public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginCo
                 }
             }
 
-            return Envelopes.Error(request, StatusCode.NotFound, $"'{Id}' has no method '{request.Method}'.");
+            return Envelopes.Error(request, StatusCode.NotFound, Loc.T($"У '{Id}' нет метода '{request.Method}'.", $"'{Id}' has no method '{request.Method}'."));
         }
         catch (HubCallException ex)
         {
@@ -202,7 +231,7 @@ public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginCo
         catch (Exception ex)
         {
             // Ошибка плагина — это ответ с ошибкой вызывающему, а не проблема хаба.
-            Logger.Error($"Method '{request.Method}' failed", ex);
+            Logger.Error(Loc.T($"Метод '{request.Method}' упал", $"Method '{request.Method}' failed"), ex);
             return Envelopes.Error(request, StatusCode.Internal, ex.Message);
         }
     }
@@ -290,7 +319,7 @@ public sealed class LoadedPlugin : IEndpoint, IPluginContext, IHubBus, IPluginCo
         }
         catch (Exception ex)
         {
-            Logger.Error("A config change handler failed", ex);
+            Logger.Error(Loc.T("Обработчик изменения настроек упал", "A config change handler failed"), ex);
         }
     }
 

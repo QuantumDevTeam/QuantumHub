@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Buffers.Binary;
 using System.IO.Pipes;
 using System.Text;
@@ -60,7 +61,7 @@ public static class DiscordFrame
         await stream.ReadExactlyAsync(header, token);
 
         var length = BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(4));
-        if (length is < 0 or > MaxSize) throw new InvalidDataException($"Плохая длина кадра: {length}.");
+        if (length is < 0 or > MaxSize) throw new InvalidDataException(Loc.T($"Плохая длина кадра: {length}.", $"Bad frame length: {length}."));
 
         var body = new byte[length];
         await stream.ReadExactlyAsync(body, token);

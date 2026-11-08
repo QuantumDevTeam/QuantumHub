@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Text.Json;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
@@ -60,7 +61,7 @@ public sealed record WindowPlacement(int X, int Y, double Width, double Height, 
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            App.Log($"Could not save the window size: {ex.Message}");
+            App.Log(Loc.T($"Не удалось сохранить размер окна: {ex.Message}", $"Could not save the window size: {ex.Message}"));
         }
     }
 
@@ -136,7 +137,7 @@ public sealed record WindowPlacement(int X, int Y, double Width, double Height, 
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            App.Log($"Could not forget the window size: {ex.Message}");
+            App.Log(Loc.T($"Не удалось забыть размер окна: {ex.Message}", $"Could not forget the window size: {ex.Message}"));
         }
     }
 

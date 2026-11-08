@@ -127,7 +127,7 @@ public sealed class AntiSleepEngine(
             }
             catch (Exception ex) when (ex is not OutOfMemoryException)
             {
-                log($"Не удалось отключиться от шлема: {ex.Message}");
+                log(Loc.T($"Не удалось отключиться от шлема: {ex.Message}", $"Could not disconnect from the headset: {ex.Message}"));
             }
         }
     }

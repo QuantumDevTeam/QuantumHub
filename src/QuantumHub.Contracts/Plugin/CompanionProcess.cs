@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Diagnostics;
 
 namespace QuantumHub.Contracts.Plugin;
@@ -35,7 +36,7 @@ public sealed class CompanionProcess(string executable, IPluginContext context) 
 
             if (!File.Exists(executable))
             {
-                if (!_reportedMissing) context.Logger.Warning($"Не найдено приложение плагина: {executable}");
+                if (!_reportedMissing) context.Logger.Warning(Loc.T($"Не найдено приложение плагина: {executable}", $"Plugin app not found: {executable}"));
                 _reportedMissing = true;
                 return;
             }

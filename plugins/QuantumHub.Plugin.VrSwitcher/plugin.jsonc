@@ -2,7 +2,8 @@
 {
   "id": "qh.vr.switcher",
   "name": "VR Switcher",
-  "version": "1.0.1",
+  "version": "1.0.2",
+  "hub": ">=1.0.0 <2.0.0",
   "description": "Когда запущен SteamVR, переключает наушники и микрофон на VR-гарнитуру, а после выхода возвращает как было.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.VrSwitcher.dll" },

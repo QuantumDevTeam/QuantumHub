@@ -27,23 +27,25 @@ A version exists **only as a Git tag**.
 
 ---
 
-## 3. Current Project Stage (Pre-release)
+## 3. Current Project Stage
 
-Until the first stable release (`v1.0.0`), QuantumHub is in an active **development stage**.
-
-The following scheme is used:
+QuantumHub is stable since `v1.0.0` and follows Semantic Versioning:
 
 ```
-v0.X.Y
+vMAJOR.MINOR.PATCH
 ```
 
-Where:
+The public API covered by these rules is:
 
-* `0` — the project does not provide a stable public API
-* `X` — breaking changes (backward compatibility may break)
-* `Y` — accumulated changes within the same development stage
+* `QuantumHub.Contracts`, `QuantumHub.Client` and `QuantumHub.Ui.Contracts`
+* the wire protocol: `contracts/proto` and `Envelopes.ProtocolVersion`
+* the plugin manifest
+* the `hub.*` methods and topics listed in `PROTOCOL.md`
+* the `quantumhub` command line and `quantumhub://` links
 
-> During the `0.x` period, any API changes are allowed without compatibility guarantees.
+`QuantumHub.Core`, the GUI and the installer are internal even though their types are public. Plugins and their capabilities have their own versions.
+
+A plugin says which hubs fit it in the `hub` field of its manifest.
 
 ---
 
@@ -80,33 +82,13 @@ A pre-release version:
 
 ---
 
-## 6. Transition to v1.0.0
-
-Version `v1.0.0` indicates that:
-
-* a baseline public API has been formed
-* core subsystems are stabilized
-* the project is ready for external usage
-
-After `v1.0.0`, the project switches to classic Semantic Versioning:
-
-```
-MAJOR.MINOR.PATCH
-```
-
----
-
-## 7. Backward Compatibility
-
-Before `v1.0.0`:
-
-* backward compatibility is **not guaranteed**
-
-After `v1.0.0`:
+## 6. Backward Compatibility
 
 * MAJOR — breaking changes
 * MINOR — API extensions
 * PATCH — bug fixes and internal improvements
+
+Versions before `v1.0.0` made no compatibility promises.
 
 ---
 

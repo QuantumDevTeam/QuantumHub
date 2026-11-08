@@ -75,6 +75,8 @@ public sealed class AudioSwitcher : IHubPlugin, IUiProvider
   "author": "Acme",
   "icon": "embedded:icon.png",     // или файл рядом: "icon.png"
 
+  "hub": ">=1.0.0 <2.0.0",         // какие версии хаба подходят, по умолчанию любые
+
   "activation": "startup",         // или "onDemand": грузится, когда понадобится
 
   "service": { "assembly": "Acme.Audio.dll" },   // "type" не нужен, есть [HubPlugin]
@@ -103,6 +105,38 @@ public sealed class AudioSwitcher : IHubPlugin, IUiProvider
 Настройки, API и внешние части необязательны. Плагин объявляет только то, что ему нужно.
 
 Версии: `*`, `1.2.3`, `>=1.0.0 <2.0.0`, `^1.2.0`, `~1.2.0`.
+
+## Перезапуск зависимости
+
+Когда перезапускают плагин, от которого ты зависишь, твой плагин продолжает работать. Подписки на месте, а вызовы на это время просто ждут. Если ты передал зависимости что-то, что она держит в памяти, или запомнил её состояние, реализуй `IDependencyAware`:
+
+```csharp
+public Task OnDependencyRestartedAsync(string providerId, CancellationToken token) =>
+    _context.Bus.CallAsync("cap:user.activity", "process.watch", names, token: token).AsTask();
+```
+
+Метод вызывается для всех зависимостей, включая необязательные.
+
+## Ссылки
+
+Плагин может объявить действия, которые запускаются ссылкой `quantumhub://run/<id>/<действие>?параметр=значение`:
+
+```jsonc
+"links": [ { "action": "mute", "title": "Микрофон", "description": "Переключает мьют." } ]
+```
+
+Тексты переводятся в блоке `locales`, в разделе `links`. Действие приходит в метод `link.run`:
+
+```csharp
+context.Bus.Handle(HubLink.RunMethod, async (request, _) =>
+{
+    var link = request.Payload.AsProto<LinkRunRequest>();
+    await RunAsync(link.Action, link.Params);
+    return HubPayload.Empty;
+});
+```
+
+Ссылку может составить кто угодно, поэтому параметры нужно проверять, а опасные действия не объявлять вовсе. Подробнее в статье [Управление извне](AUTOMATION.md).
 
 ## В каком виде поставлять
 
@@ -189,6 +223,10 @@ public void OnUiEvent(UiEvent uiEvent)
 подключается к хабу через `HubClient` и получает имя экземпляра в аргументе `--instance`. Пример: `companions/QuantumHub.VrChatPanel`.
 
 Если нужно только сообщить что-то пользователю, своё окно не нужно: вызови `cap:ui.notifications`.
+
+## SDK
+
+Вместе с релизом выходят пакеты NuGet, папка `sdk`: `QuantumHub.Contracts` для DLL-плагина и `QuantumHub.Client` для внешнего. Что в них меняется и как, описано в [политике версий](Versioning.md).
 
 ## Внешний плагин на .NET
 

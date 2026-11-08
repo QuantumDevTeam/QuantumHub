@@ -2,11 +2,16 @@
 {
   "id": "qh.discord",
   "name": "Discord",
-  "version": "1.0.1",
+  "version": "1.1.0",
+  "hub": ">=1.0.0 <2.0.0",
   "description": "Подключается к запущенному Discord: мьют, текущий канал, участники, пинг, Rich Presence. Им пользуются другие плагины.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.Discord.dll" },
   "provides": [ { "name": "discord.client", "version": "1.0.0" } ],
+  "links": [
+    { "action": "mute", "title": "Микрофон в Discord", "description": "Переключает мьют. Параметр state=on или state=off задаёт его явно." },
+    { "action": "deafen", "title": "Звук в Discord", "description": "Переключает заглушение. Параметр state=on или state=off задаёт его явно." }
+  ],
   "settings": [
     {
       "key": "clientId",
@@ -52,6 +57,10 @@
   "locales": {
     "en": {
       "description": "Connects to the running Discord: mute, current channel, members, ping, Rich Presence. Other plugins use it.",
+      "links": {
+        "mute": { "title": "Discord microphone", "description": "Toggles mute. The parameter state=on or state=off sets it explicitly." },
+        "deafen": { "title": "Discord sound", "description": "Toggles deafen. The parameter state=on or state=off sets it explicitly." }
+      },
       "groups": {
         "Приложение Discord": "Discord application",
         "Подключение": "Connection"

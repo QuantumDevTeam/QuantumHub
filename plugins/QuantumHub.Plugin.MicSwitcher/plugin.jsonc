@@ -2,7 +2,8 @@
 {
   "id": "qh.audio.micswitch",
   "name": "Mic Switcher",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "hub": ">=1.0.0 <2.0.0",
   "description": "Замечает, что ты заговорил в другой микрофон, и переключает на него сам или в один щелчок.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.MicSwitcher.dll" },

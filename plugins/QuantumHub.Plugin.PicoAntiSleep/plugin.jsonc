@@ -2,7 +2,8 @@
 {
   "id": "qh.vr.pico.antisleep",
   "name": "Pico Sleep Mode",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "hub": ">=1.0.0 <2.0.0",
   "description": "Не даёт шлему Pico заснуть: раз в минуту посылает ему сигнал по ADB через Wi-Fi.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.PicoAntiSleep.dll" },

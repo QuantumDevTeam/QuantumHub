@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>$(QhDotnet)</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <Description>Contracts for QuantumHub plugins: IHubPlugin, the message bus and the UI builder.</Description>
   </PropertyGroup>
 
   <ItemGroup>

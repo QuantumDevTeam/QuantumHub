@@ -21,7 +21,7 @@ public sealed record AudioTarget(string Target);
 /// интерфейс. Вся логика лежит в <see cref="VrAudioEngine"/>, а сам звук в возможности audio.devices.
 /// </summary>
 [HubPlugin]
-public sealed class VrSwitcherPlugin : IHubPlugin, IUiProvider
+public sealed class VrSwitcherPlugin : IHubPlugin, IDependencyAware, IUiProvider
 {
     /// <summary>Топик начала и конца VR-сессии. Тело: <see cref="VrSession"/> в JSON.</summary>
     public const string SessionTopic = "vr.session.changed";
@@ -59,7 +59,7 @@ public sealed class VrSwitcherPlugin : IHubPlugin, IUiProvider
                     await _engine.RestoreNowAsync();
                     break;
                 default:
-                    throw new HubCallException(StatusCode.InvalidArgument, "Target must be \"headset\" or \"desktop\".");
+                    throw new HubCallException(StatusCode.InvalidArgument, Loc.T("Цель должна быть \"headset\" или \"desktop\".", "Target must be \"headset\" or \"desktop\"."));
             }
 
             return HubPayload.Json(Session());
@@ -72,6 +72,13 @@ public sealed class VrSwitcherPlugin : IHubPlugin, IUiProvider
         PushState();
         _stop = new CancellationTokenSource();
         _loop = Task.Run(() => RunAsync(_stop.Token), CancellationToken.None);
+    }
+
+    /// <inheritdoc/>
+    public async Task OnDependencyRestartedAsync(string providerId, CancellationToken token)
+    {
+        await _probe.RefreshAsync(_context.Bus, token);
+        ShowCurrent(await _context.Bus.CallAsync("cap:audio.devices", "devices.current", token: token));
     }
 
     /// <inheritdoc/>
@@ -96,7 +103,7 @@ public sealed class VrSwitcherPlugin : IHubPlugin, IUiProvider
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _context.Logger.Error("Проверка SteamVR не удалась", ex);
+                    _context.Logger.Error(Loc.T("Проверка SteamVR не удалась", "The SteamVR check failed"), ex);
                 }
 
                 var seconds = Math.Clamp(_context.Config.Get("pollSeconds", 2d), 1, 60);

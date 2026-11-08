@@ -2,7 +2,8 @@
 {
   "id": "qh.vrchat.chatbox",
   "name": "VRChat Chatbox",
-  "version": "1.1.0",
+  "version": "1.1.1",
+  "hub": ">=1.0.0 <2.0.0",
   "description": "Показывает в чатбоксе VRChat статус, активное окно, загрузку компьютера, время и музыку. Пока запущена игра, открыто окошко для статуса и сообщений.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.Chatbox.dll" },

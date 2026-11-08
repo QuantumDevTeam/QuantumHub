@@ -28,7 +28,7 @@ public sealed record SwitchRequest(string Id);
 /// интерфейс. Вся логика лежит в <see cref="MicSwitchEngine"/>, а сам звук в возможности audio.devices.
 /// </summary>
 [HubPlugin]
-public sealed class MicSwitcherPlugin : IHubPlugin, IUiProvider
+public sealed class MicSwitcherPlugin : IHubPlugin, IDependencyAware, IUiProvider
 {
     private const int PageRefreshMs = 500;
     private const string SwitchPrefix = "switch:";
@@ -66,7 +66,7 @@ public sealed class MicSwitcherPlugin : IHubPlugin, IUiProvider
         context.Bus.Handle("mic.switch", async (request, _) =>
         {
             var id = request.Payload.AsJson<SwitchRequest>()?.Id;
-            if (string.IsNullOrEmpty(id)) throw new HubCallException(StatusCode.InvalidArgument, "Нужен id микрофона.");
+            if (string.IsNullOrEmpty(id)) throw new HubCallException(StatusCode.InvalidArgument, Loc.T("Нужен id микрофона.", "A microphone id is required."));
 
             await _engine.SwitchAsync(id);
             return HubPayload.Empty;
@@ -75,7 +75,7 @@ public sealed class MicSwitcherPlugin : IHubPlugin, IUiProvider
         {
             var mode = request.Payload.AsJson<SetModeRequest>()?.Mode;
             if (mode is not ("off" or "hint" or "auto"))
-                throw new HubCallException(StatusCode.InvalidArgument, "Mode must be \"off\", \"hint\" or \"auto\".");
+                throw new HubCallException(StatusCode.InvalidArgument, Loc.T("Режим должен быть \"off\", \"hint\" или \"auto\".", "Mode must be \"off\", \"hint\" or \"auto\"."));
 
             context.Config.Set("mode", mode);
             return ValueTask.FromResult(HubPayload.Json(new MicSwitcherState(mode, _engine.Status)));
@@ -88,6 +88,9 @@ public sealed class MicSwitcherPlugin : IHubPlugin, IUiProvider
         _stop = new CancellationTokenSource();
         _loop = Task.Run(() => RunAsync(_stop.Token), CancellationToken.None);
     }
+
+    /// <inheritdoc/>
+    public Task OnDependencyRestartedAsync(string providerId, CancellationToken token) => _vr.RefreshAsync(_context.Bus, token);
 
     /// <inheritdoc/>
     public async Task StopAsync(CancellationToken token)
@@ -125,7 +128,7 @@ public sealed class MicSwitcherPlugin : IHubPlugin, IUiProvider
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            if (ex.Message != _lastError) _context.Logger.Warning($"Микрофоны: {ex.Message}");
+            if (ex.Message != _lastError) _context.Logger.Warning(Loc.T($"Микрофоны: {ex.Message}", $"Microphones: {ex.Message}"));
             _lastError = ex.Message;
         }
     }

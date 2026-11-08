@@ -2,7 +2,8 @@
 {
   "id": "qh.vrchat.osc",
   "name": "VRChat OSC",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "hub": ">=1.0.0 <2.0.0",
   "description": "Связь с VRChat по OSC: чат, параметры аватара, трекеры и приём сообщений из игры. Им пользуются другие плагины.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.VrChatOsc.dll" },

@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.IO.Compression;
 
 namespace QuantumHub.Setup;
@@ -91,7 +92,7 @@ internal sealed class Installer(string directory)
     {
         var target = Path.GetFullPath(Path.Combine(Directory, entry));
         if (!target.StartsWith(Directory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException($"В архиве недопустимый путь: {entry}");
+            throw new InvalidDataException(Loc.T($"В архиве недопустимый путь: {entry}", $"The archive has an invalid path: {entry}"));
         return target;
     }
 

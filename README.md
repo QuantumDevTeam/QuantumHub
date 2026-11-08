@@ -29,7 +29,9 @@ external community contributors under the terms described in [CLA.md](CLA.md).
 Скачай `QuantumHub-Setup-<версия>.exe` со [страницы релизов](https://github.com/QuantumDevTeam/QuantumHub/releases) и запусти. Больше ничего не нужно: .NET лежит внутри, права администратора не требуются.
 Программа встанет в `%LOCALAPPDATA%\Programs\QuantumHub` со всеми плагинами и запустится сама.
 
-- **Сервис** отдельно запускать не надо: его поднимает окно, а если он упал, поднимает снова.
+- **Сервис** отдельно запускать не надо: он стартует при входе в Windows, а если упал, поднимается снова.
+- **Командная строка:** `quantumhub status`, `quantumhub plugins` и [другие команды](docs/AUTOMATION.md).
+- **Ссылки** `quantumhub://` открывают страницы и запускают действия плагинов.
 - **Новый плагин** ставится двойным щелчком по файлу `.qhp`, перетаскиванием в окно или кнопкой на странице «Плагины».
 - **Обновление** — тот же установщик поверх старой версии. Настройки и твои плагины останутся.
 - **Удаление** — через «Установленные приложения» в Windows. Настройки останутся в `%APPDATA%\QuantumHub`.
@@ -102,6 +104,7 @@ powershell -ExecutionPolicy Bypass -File scripts/docs.ps1 -Serve
 - [Словарь](docs/GLOSSARY.md)
 - [Как написать плагин](docs/PLUGINS.md)
 - [Протокол: для клиентов на любом языке](docs/PROTOCOL.md)
+- [Управление извне: командная строка и ссылки](docs/AUTOMATION.md)
 
 Участие в проекте:
 
@@ -110,6 +113,7 @@ powershell -ExecutionPolicy Bypass -File scripts/docs.ps1 -Serve
 - [Git & Workflow Policy](docs/GitPolicy.md)
 - [Versioning Strategy](docs/Versioning.md)
 - [Changelog](CHANGELOG.md)
+- [Security](SECURITY.md)
 
 ---
 
@@ -124,6 +128,7 @@ powershell -ExecutionPolicy Bypass -File scripts/docs.ps1 -Serve
 | `src/QuantumHub.Service` | Exe хаба |
 | `src/QuantumHub.Client` | SDK для внешних плагинов на .NET |
 | `src/QuantumHub.Gui` | Админка на WinUI 3 |
+| `src/QuantumHub.Cli` | Командная строка `quantumhub` |
 | `src/QuantumHub.Ui.Contracts` | Контракт нативного UI плагина |
 | `src/QuantumHub.Setup` | Установщик и деинсталлятор |
 | `plugins/` | Плагины: активность, звук, музыка, уведомления, VR, VRChat, характеристики |
@@ -137,11 +142,7 @@ powershell -ExecutionPolicy Bypass -File scripts/docs.ps1 -Serve
 
 ## Текущее состояние
 
-Проект на ранней стадии.
-
-* API нестабилен
-* Архитектура продолжает меняться
-* Ломающие изменения ожидаемы
+Стабильная версия. Что считается публичным API и как оно меняется, описано в [политике версий](docs/Versioning.md).
 
 ---
 

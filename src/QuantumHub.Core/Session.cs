@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Collections.Concurrent;
 using QuantumHub.Contracts.Ipc;
 using QuantumHub.Contracts.Proto;
@@ -90,9 +91,18 @@ public sealed class Session : IEndpoint
     /// <summary>Выполняет запрос клиента через роутер и отправляет ответ.</summary>
     private async Task HandleRequestAsync(Envelope request)
     {
-        var response = request is { Target: Envelopes.HubTarget, Method: "hub.subscribe" or "hub.unsubscribe" }
-            ? HandleSubscription(request)
-            : await _hub.Router.RequestAsync(request, _lifetime.Token);
+        Envelope response;
+        try
+        {
+            response = request is { Target: Envelopes.HubTarget, Method: "hub.subscribe" or "hub.unsubscribe" }
+                ? HandleSubscription(request)
+                : await _hub.Router.RequestAsync(request, _lifetime.Token);
+        }
+        catch (Google.Protobuf.InvalidProtocolBufferException ex)
+        {
+            // Без ответа клиент ждал бы до своего таймаута.
+            response = Envelopes.Error(request, StatusCode.InvalidArgument, ex.Message);
+        }
 
         response.Kind = EnvelopeKind.Response;
         response.Id = request.Id;
@@ -159,11 +169,11 @@ public sealed class Session : IEndpoint
         foreach (var id in _pending.Keys)
         {
             if (_pending.TryRemove(id, out var waiter))
-                waiter.TrySetResult(Envelopes.Error(new Envelope { Id = id }, StatusCode.Unavailable, $"'{Id}' disconnected."));
+                waiter.TrySetResult(Envelopes.Error(new Envelope { Id = id }, StatusCode.Unavailable, Loc.T($"'{Id}' отключился.", $"'{Id}' disconnected.")));
         }
 
         _channel.Dispose();
-        if (failure is not null) _hub.Log.Warning($"Connection of {Id} failed: {failure.Message}");
+        if (failure is not null) _hub.Log.Warning(Loc.T($"Соединение с {Id} оборвалось: {failure.Message}", $"Connection of {Id} failed: {failure.Message}"));
         Closed?.Invoke(this);
     }
 

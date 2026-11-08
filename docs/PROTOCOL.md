@@ -48,16 +48,25 @@
 | `hub.plugins.install` | `InstallRequest` → `PluginInfo` |
 | `hub.plugins.asset` | `AssetRequest` → `AssetResponse` |
 | `hub.sessions.list` | → `SessionList` |
+| `hub.sessions.history` | → `SessionHistory` |
 | `hub.logs.get` | → `LogList` |
+| `hub.links.run` | `LinkRunRequest` → ответ плагина |
+| `hub.diagnostics.export` | `DiagnosticsRequest` → `DiagnosticsResponse` |
 | `hub.ui.get` | `UiRequest` → `UiResponse` |
 | `hub.ui.event` | `UiEvent` |
 | `hub.shutdown` | |
 
-Топики: `hub.plugin.state` (`PluginInfo`), `hub.plugin.removed` (id текстом), `hub.session.connected` и
+Топики: `hub.stopping` (id того, кто попросил завершить хаб, текстом), `hub.plugin.state` (`PluginInfo`), `hub.plugin.removed` (id текстом), `hub.session.connected` и
 `hub.session.disconnected` (`SessionInfo`), `hub.ui.state` (`UiStatePatch`), `hub.log` (`LogEntry`),
 `config.<id>` (`ConfigChanged`). В подписке работает `префикс.*`.
 
 Если хочешь показывать интерфейс, обрабатывай `ui.get` (ответ `UiResponse`) и `ui.event` (запрос `UiEvent`).
+
+`client_id` не может быть пустым, равным `hub` или начинаться с `cap:` и `session:`: он становится адресом в роутере.
+
+Тексты ошибок приходят на языке, выбранном в хабе. Разбирать их не надо, для этого есть `status`.
+
+Внешний клиент узнаёт о перезапуске плагина из топика `hub.plugin.state`: подписки при этом не теряются.
 
 ## Shared memory
 

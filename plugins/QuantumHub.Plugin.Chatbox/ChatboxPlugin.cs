@@ -18,7 +18,7 @@ public sealed record ChatboxState(bool GameRunning, bool Sending, string Status,
 /// игры у user.activity, музыку у media.player, загрузку у system.stats, а отправляет через vrchat.osc.
 /// </summary>
 [HubPlugin]
-public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
+public sealed class ChatboxPlugin : IHubPlugin, IDependencyAware, IUiProvider
 {
     /// <summary>Топик изменения состояния. Его слушает мини-окно.</summary>
     public const string ChangedTopic = "chatbox.changed";
@@ -74,14 +74,24 @@ public sealed class ChatboxPlugin : IHubPlugin, IUiProvider
         context.Config.Changed += OnConfigChanged;
 
         _subscription = await context.Bus.SubscribeAsync("activity.process.changed", OnProcessChanged, token);
-        var names = HubPayload.Json(new { names = new[] { GameProcess } });
-        await context.Bus.CallAsync("cap:user.activity", "process.watch", names, token: token);
-        var running = (await context.Bus.CallAsync("cap:user.activity", "process.list", names, token: token)).AsJson<ProcessList>();
-        SetGameRunning(running?.Names.Length > 0);
+        await WatchGameAsync(token);
 
         _stop = new CancellationTokenSource();
         _loop = Task.Run(() => RunAsync(_stop.Token), CancellationToken.None);
     }
+
+    /// <summary>Просит следить за игрой. Список хранит плагин активности, и его новый экземпляр о нём не знает.</summary>
+    private async Task WatchGameAsync(CancellationToken token)
+    {
+        var names = HubPayload.Json(new { names = new[] { GameProcess } });
+        await _context.Bus.CallAsync("cap:user.activity", "process.watch", names, token: token);
+        var running = (await _context.Bus.CallAsync("cap:user.activity", "process.list", names, token: token)).AsJson<ProcessList>();
+        SetGameRunning(running?.Names.Length > 0);
+    }
+
+    /// <inheritdoc/>
+    public Task OnDependencyRestartedAsync(string providerId, CancellationToken token) =>
+        providerId == _context.Manifest.Id ? Task.CompletedTask : WatchGameAsync(token);
 
     private sealed record ProcessList(string[] Names);
 

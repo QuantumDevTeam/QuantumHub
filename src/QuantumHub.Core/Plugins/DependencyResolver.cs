@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using QuantumHub.Contracts.Proto;
 
 namespace QuantumHub.Core.Plugins;
@@ -37,11 +38,11 @@ public static class DependencyResolver
         if (!VersionRange.TryParse(dependency.Version, out var range))
         {
             result.State = DependencyState.Failed;
-            result.Detail = $"Invalid version range '{dependency.Version}'.";
+            result.Detail = Loc.T($"Неверный диапазон версий '{dependency.Version}'.", $"Invalid version range '{dependency.Version}'.");
             return result;
         }
 
-        var label = dependency.Id.Length > 0 ? dependency.Id : $"capability '{dependency.Capability}'";
+        var label = dependency.Id.Length > 0 ? dependency.Id : Loc.T($"возможность '{dependency.Capability}'", $"capability '{dependency.Capability}'");
         var named = new List<(ProviderCandidate Provider, SemVersion Version)>();
         foreach (var candidate in candidates)
         {
@@ -62,7 +63,7 @@ public static class DependencyResolver
         if (named.Count == 0)
         {
             result.State = DependencyState.Missing;
-            result.Detail = $"Nothing provides {label}.";
+            result.Detail = Loc.T($"Никто не предоставляет: {label}.", $"Nothing provides {label}.");
             return result;
         }
 
@@ -70,7 +71,7 @@ public static class DependencyResolver
         if (matching.Count == 0)
         {
             result.State = DependencyState.VersionMismatch;
-            result.Detail = $"{label} is at {named.Max(entry => entry.Version)} but '{dependency.Version}' is required.";
+            result.Detail = Loc.T($"{label}: есть версия {named.Max(entry => entry.Version)}, а нужна '{dependency.Version}'.", $"{label} is at {named.Max(entry => entry.Version)} but '{dependency.Version}' is required.");
             return result;
         }
 

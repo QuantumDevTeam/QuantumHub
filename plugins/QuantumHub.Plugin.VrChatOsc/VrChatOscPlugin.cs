@@ -85,7 +85,7 @@ public sealed class VrChatOscPlugin : IHubPlugin, IUiProvider
     {
         try
         {
-            action(request.Payload.AsJson<T>() ?? throw new ArgumentException("Пустой запрос."));
+            action(request.Payload.AsJson<T>() ?? throw new ArgumentException(Loc.T("Пустой запрос.", "Empty request.")));
             return ValueTask.FromResult(HubPayload.Empty);
         }
         catch (Exception ex) when (ex is ArgumentException or JsonException)
@@ -105,7 +105,7 @@ public sealed class VrChatOscPlugin : IHubPlugin, IUiProvider
     private void SendTracker(TrackerRequest tracker)
     {
         if (tracker.Position is not { Length: 3 } || tracker.Rotation is not { Length: 3 })
-            throw new ArgumentException("Нужны три координаты положения и три угла поворота.");
+            throw new ArgumentException(Loc.T("Нужны три координаты положения и три угла поворота.", "Three position coordinates and three rotation angles are required."));
 
         Send($"/tracking/trackers/{tracker.Id}/position", tracker.Position.Cast<object>().ToArray());
         Send($"/tracking/trackers/{tracker.Id}/rotation", tracker.Rotation.Cast<object>().ToArray());
@@ -137,7 +137,7 @@ public sealed class VrChatOscPlugin : IHubPlugin, IUiProvider
         catch (SocketException)
         {
             // Порт приёма может держать только одна программа. Отправка от этого не страдает.
-            _context.Logger.Warning($"Порт {port} занят другой программой, приём выключен.");
+            _context.Logger.Warning(Loc.T($"Порт {port} занят другой программой, приём выключен.", $"Port {port} is taken by another program, receiving is off."));
             _context.Ui.Set("receive", Loc.T($"порт {port} занят другой программой", $"port {port} is used by another program"));
         }
     }

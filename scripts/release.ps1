@@ -1,6 +1,7 @@
 # Собирает релиз. Результат в artifacts\release:
 #   QuantumHub-Setup-<версия>.exe   установщик: всё внутри, .NET и права администратора не нужны
 #   plugins\*.qhp                   те же плагины отдельными файлами
+#   sdk\*.nupkg                     SDK для авторов плагинов
 #   SHA256SUMS.txt                  контрольные суммы
 param(
     [string]$Output = (Join-Path $PSScriptRoot '..\artifacts\release'),
@@ -64,6 +65,12 @@ finally { $stream.Dispose() }
 $packages = Join-Path $Output 'plugins'
 New-Item -ItemType Directory -Force $packages | Out-Null
 Copy-Item (Join-Path $published 'packages\*.qhp') $packages
+
+$sdk = Join-Path $Output 'sdk'
+foreach ($project in 'QuantumHub.Contracts', 'QuantumHub.ProtoMemProtocol', 'QuantumHub.Client') {
+    dotnet pack (Join-Path $repo "src\$project\$project.csproj") -c Release -o $sdk --nologo -v q
+    if ($LASTEXITCODE -ne 0) { throw "Packing $project failed." }
+}
 
 Get-ChildItem $Output -Recurse -File | ForEach-Object {
     "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.FullName.Substring($Output.Length + 1))"

@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -51,7 +52,7 @@ public sealed class IpcServer(Hub hub, HubOptions options) : IDisposable
     public void Start()
     {
         _pipe = new PipeListener(options.Endpoint.PipeName, stream => HandleConnectionAsync(stream, false),
-            ex => hub.Log.Warning($"Pipe listener: {ex.Message}"));
+            ex => hub.Log.Warning(Loc.T($"Приём по pipe: {ex.Message}", $"Pipe listener: {ex.Message}")));
         _pipe.Start();
 
         if (options.TcpPort is { } port)
@@ -97,7 +98,7 @@ public sealed class IpcServer(Hub hub, HubOptions options) : IDisposable
 
             if (request.Method != Envelopes.HelloMethod)
             {
-                await RejectAsync(stream, request, StatusCode.InvalidArgument, "Expected hub.hello.", null);
+                await RejectAsync(stream, request, StatusCode.InvalidArgument, Loc.T("Ожидался hub.hello.", "Expected hub.hello."), null);
                 return;
             }
 
@@ -105,13 +106,19 @@ public sealed class IpcServer(Hub hub, HubOptions options) : IDisposable
             if (hello.ProtocolVersion != Envelopes.ProtocolVersion)
             {
                 await RejectAsync(stream, request, StatusCode.FailedPrecondition,
-                    $"Protocol {hello.ProtocolVersion} is not supported; the hub speaks {Envelopes.ProtocolVersion}.", null);
+                    Loc.T($"Протокол {hello.ProtocolVersion} не поддерживается, хаб работает на {Envelopes.ProtocolVersion}.", $"Protocol {hello.ProtocolVersion} is not supported; the hub speaks {Envelopes.ProtocolVersion}."), null);
                 return;
             }
 
             if (isTcp && !TokenMatches(hello.AuthToken))
             {
-                await RejectAsync(stream, request, StatusCode.Unauthenticated, "Wrong auth token.", null);
+                await RejectAsync(stream, request, StatusCode.Unauthenticated, Loc.T("Неверный токен.", "Wrong auth token."), null);
+                return;
+            }
+
+            if (!IsValidClientId(hello.ClientId))
+            {
+                await RejectAsync(stream, request, StatusCode.InvalidArgument, Loc.T($"'{hello.ClientId}' не может быть id клиента.", $"'{hello.ClientId}' cannot be a client id."), null);
                 return;
             }
 
@@ -128,8 +135,8 @@ public sealed class IpcServer(Hub hub, HubOptions options) : IDisposable
                 !result.Dependency.Optional && result.State is not (DependencyState.Resolved or DependencyState.Deferred)).ToList();
             if (unmet.Count > 0)
             {
-                var message = "Required dependencies are unavailable: " + string.Join("; ", unmet.Select(result => result.Detail));
-                hub.Log.Warning($"Rejected {hello.ClientId}: {message}");
+                var message = Loc.T("Недоступны обязательные зависимости: ", "Required dependencies are unavailable: ") + string.Join("; ", unmet.Select(result => result.Detail));
+                hub.Log.Warning(Loc.T($"Отказано {hello.ClientId}: {message}", $"Rejected {hello.ClientId}: {message}"));
                 await RejectAsync(stream, request, StatusCode.FailedPrecondition, message, response);
                 return;
             }
@@ -141,16 +148,23 @@ public sealed class IpcServer(Hub hub, HubOptions options) : IDisposable
             await FrameCodec.WriteMessageAsync(stream, Envelopes.Response(request, HubPayload.Proto(response)), timeout.Token);
             session.Start();
 
-            hub.Log.Info($"Connected: {hello.ClientId} {hello.Version} over {channel.Transport}");
+            hub.Log.Info(Loc.T($"Подключился {hello.ClientId} {hello.Version} через {channel.Transport}", $"Connected: {hello.ClientId} {hello.Version} over {channel.Transport}"));
             hub.Router.Publish(Hub.ConfigOwner, Hub.SessionConnectedTopic, HubPayload.Proto(session.ToInfo()));
         }
         catch (Exception ex) when (ex is IOException or OperationCanceledException or EndOfStreamException
                                        or Google.Protobuf.InvalidProtocolBufferException or InvalidDataException)
         {
-            hub.Log.Warning($"Handshake failed: {ex.Message}");
+            hub.Log.Warning(Loc.T($"Рукопожатие не удалось: {ex.Message}", $"Handshake failed: {ex.Message}"));
             await stream.DisposeAsync();
         }
     }
+
+    /// <summary>Id становится адресом в роутере, поэтому клиент не может занять адрес самого хаба или служебный префикс.</summary>
+    /// <param name="id">Id клиента.</param>
+    public static bool IsValidClientId(string id) =>
+        id.Length > 0 && id != Envelopes.HubTarget &&
+        !id.StartsWith(Routing.Router.CapabilityPrefix, StringComparison.Ordinal) &&
+        !id.StartsWith("session:", StringComparison.Ordinal);
 
     /// <summary>Сравнивает токен за постоянное время, чтобы его нельзя было подобрать по времени ответа.</summary>
     private bool TokenMatches(string token) => TcpToken is not null && CryptographicOperations.FixedTimeEquals(
@@ -220,7 +234,7 @@ public sealed class IpcServer(Hub hub, HubOptions options) : IDisposable
         hub.Router.Unregister(session.Address, session);
         hub.Router.Unregister(session.Id, session);
         hub.Router.UnsubscribeAll(session);
-        hub.Log.Info($"Disconnected: {session.Id}");
+        hub.Log.Info(Loc.T($"Отключился {session.Id}", $"Disconnected: {session.Id}"));
         hub.Router.Publish(Hub.ConfigOwner, Hub.SessionDisconnectedTopic, HubPayload.Proto(session.ToInfo()));
     }
 

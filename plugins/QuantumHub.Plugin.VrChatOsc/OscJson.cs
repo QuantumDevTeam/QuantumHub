@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Text.Json;
 
 namespace QuantumHub.Plugin.VrChatOsc;
@@ -19,6 +20,6 @@ public static class OscJson
         JsonValueKind.Number when value.TryGetInt32(out var number) => number,
         JsonValueKind.Number => value.GetSingle(),
         JsonValueKind.Object when value.TryGetProperty("float", out var number) => number.GetSingle(),
-        _ => throw new ArgumentException($"Нельзя отправить значение {value}."),
+        _ => throw new ArgumentException(Loc.T($"Нельзя отправить значение {value}.", $"Cannot send the value {value}.")),
     };
 }

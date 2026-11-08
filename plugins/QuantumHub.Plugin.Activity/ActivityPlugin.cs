@@ -217,7 +217,7 @@ public sealed class ActivityPlugin : IHubPlugin, IUiProvider
         }
         catch (Exception ex)
         {
-            _context.Logger.Error("Не удалось прочитать активное окно", ex);
+            _context.Logger.Error(Loc.T("Не удалось прочитать активное окно", "Could not read the active window"), ex);
         }
     }
 

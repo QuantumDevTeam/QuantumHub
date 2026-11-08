@@ -37,7 +37,7 @@ internal static class Program
         // OpenVR запускает SteamVR сам, если его нет, а без спроса этого делать нельзя.
         if (Process.GetProcessesByName("vrserver").Length == 0)
         {
-            Log("SteamVR is not running.");
+            Log(Loc.T("SteamVR не запущен.", "SteamVR is not running."));
             return 0;
         }
 

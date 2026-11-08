@@ -91,6 +91,7 @@ flowchart TD
 |---|---|---|
 | `QuantumHub.Client` | SDK для внешних плагинов на .NET. Им же пользуется GUI | [README](../src/QuantumHub.Client/README.md) |
 | `QuantumHub.Gui` | Админка на WinUI 3: окно, трей, страницы плагинов | [README](../src/QuantumHub.Gui/README.md) |
+| `QuantumHub.Cli` | Командная строка `quantumhub` | [README](../src/QuantumHub.Cli/README.md) |
 | `QuantumHub.Ui.Contracts` | Интерфейс нативной страницы. Отдельно, потому что зависит от WinUI | [README](../src/QuantumHub.Ui.Contracts/README.md) |
 | `QuantumHub.Setup` | Установщик и деинсталлятор в одном exe | [README](../src/QuantumHub.Setup/README.md) |
 

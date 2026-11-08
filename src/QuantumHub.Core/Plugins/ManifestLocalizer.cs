@@ -27,6 +27,13 @@ public static class ManifestLocalizer
             foreach (var (option, label) in text.Options) setting.OptionLabels[option] = label;
         }
 
+        foreach (var link in result.Links)
+        {
+            if (!locale.Links.TryGetValue(link.Action, out var text)) continue;
+            if (text.Title.Length > 0) link.Title = text.Title;
+            if (text.Description.Length > 0) link.Description = text.Description;
+        }
+
         return result;
     }
 }

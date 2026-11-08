@@ -172,7 +172,7 @@ public sealed class PluginPage : HubPage, IPluginUiHost
         }
         catch (Exception ex)
         {
-            App.Log($"Native UI of {_pluginId}: {ex}");
+            App.Log(Loc.T($"Нативный интерфейс {_pluginId}: {ex}", $"Native UI of {_pluginId}: {ex}"));
             ShowError(_column, Loc.T($"Не удалось загрузить интерфейс плагина: {ex.Message}", $"Could not load the plugin interface: {ex.Message}"));
         }
     }
@@ -187,7 +187,7 @@ public sealed class PluginPage : HubPage, IPluginUiHost
         catch (Exception ex)
         {
             // Ошибка плагина остаётся на странице плагина.
-            App.Log($"Page of {_pluginId}: {ex}");
+            App.Log(Loc.T($"Страница {_pluginId}: {ex}", $"Page of {_pluginId}: {ex}"));
             return new InfoBar { IsOpen = true, IsClosable = false, Severity = InfoBarSeverity.Error, Title = Loc.T("Страница плагина упала", "The plugin page crashed"), Message = ex.Message };
         }
     }

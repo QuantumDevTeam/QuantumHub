@@ -2,7 +2,8 @@
 {
   "id": "qh.vr.dashboard",
   "name": "SteamVR Dashboard",
-  "version": "1.1.0",
+  "version": "1.1.1",
+  "hub": ">=1.0.0 <2.0.0",
   "description": "Вкладка в меню SteamVR: звук, мьют в Discord, режим сна и чатбокс прямо в шлеме.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.VrDashboard.dll" },

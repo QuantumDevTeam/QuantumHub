@@ -36,6 +36,18 @@ public interface IUiProvider
     void OnLanguageChanged() { }
 }
 
+/// <summary>
+/// Необязательный интерфейс для плагина, который что-то передал своей зависимости или запомнил от неё. При перезапуске
+/// зависимости плагин продолжает работать, подписки на месте, а вот то, что держал старый экземпляр зависимости, пропало.
+/// </summary>
+public interface IDependencyAware
+{
+    /// <summary>Зависимость перезапущена и уже работает. Здесь плагин заново читает её состояние и повторяет свои просьбы.</summary>
+    /// <param name="providerId">Id перезапущенного плагина.</param>
+    /// <param name="token">Отменяется через 10 секунд.</param>
+    Task OnDependencyRestartedAsync(string providerId, CancellationToken token);
+}
+
 /// <summary>Отмечает класс плагина, чтобы хаб нашёл его без поля "service.type" в манифесте.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class HubPluginAttribute : Attribute;

@@ -11,7 +11,7 @@ public sealed class HubLog : IDisposable
 
     /// <summary>Недавние записи. Заодно служит блокировкой для файла.</summary>
     private readonly Queue<LogEntry> _recent = new();
-    private readonly StreamWriter _file;
+    private StreamWriter _file;
     private bool _closed;
 
     /// <summary>Начало имени файла журнала.</summary>
@@ -19,7 +19,11 @@ public sealed class HubLog : IDisposable
     /// <summary>Папка журналов.</summary>
     private readonly string _logsDir;
     /// <summary>Файл журнала на сегодня.</summary>
-    private readonly string _currentFile;
+    private string _currentFile;
+    /// <summary>Какой день пишется в файл. Хаб работает неделями, и новый день начинает новый файл.</summary>
+    private DateOnly _currentDay;
+    /// <summary>Сколько дней хранить файлы. 0 значит всегда.</summary>
+    private int _retentionDays;
 
     /// <summary>Открывает файл журнала на сегодня.</summary>
     /// <param name="logsDir">Папка журналов.</param>
@@ -28,15 +32,53 @@ public sealed class HubLog : IDisposable
     {
         EchoToConsole = echoToConsole;
         _logsDir = logsDir;
-        _currentFile = Path.Combine(logsDir, $"{FilePrefix}{DateTime.Now:yyyy-MM-dd}.log");
-        _file = new StreamWriter(new FileStream(_currentFile, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)) { AutoFlush = true };
+        _currentDay = DateOnly.FromDateTime(DateTime.Now);
+        (_file, _currentFile) = Open(_currentDay);
     }
+
+    /// <summary>Открывает файл дня.</summary>
+    private (StreamWriter File, string Path) Open(DateOnly day)
+    {
+        var path = Path.Combine(_logsDir, $"{FilePrefix}{day:yyyy-MM-dd}.log");
+        var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+        return (new StreamWriter(stream) { AutoFlush = true }, path);
+    }
+
+    /// <summary>Начинает файл нового дня и убирает старые. Вызывается под блокировкой.</summary>
+    /// <param name="now">Текущее время.</param>
+    private void RollOver(DateTime now)
+    {
+        var day = DateOnly.FromDateTime(now);
+        if (day == _currentDay) return;
+
+        try
+        {
+            var (file, path) = Open(day);
+            _file.Dispose();
+            _file = file;
+            _currentFile = path;
+            _currentDay = day;
+            PruneFiles(_retentionDays);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Продолжаем писать в старый файл: потерять запись хуже, чем положить её не в тот день.
+        }
+    }
+
+    /// <summary>Текущее время. Тесты подменяют его, чтобы не ждать полуночи.</summary>
+    public Func<DateTime> Clock { get; set; } = () => DateTime.Now;
 
     /// <summary>Дублируются ли записи в консоль.</summary>
     public bool EchoToConsole { get; }
 
+    /// <summary>Уровень записи по умолчанию.</summary>
+    public const string DefaultLevel = "info";
+    /// <summary>Сколько дней хранить файлы по умолчанию. Хаб работает всегда, и без предела журнал рос бы вечно.</summary>
+    public const int DefaultRetentionDays = 30;
+
     /// <summary>Записи ниже этого уровня не сохраняются: "debug", "info", "warning" или "error".</summary>
-    public string MinLevel { get; set; } = "debug";
+    public string MinLevel { get; set; } = DefaultLevel;
 
     /// <summary>Вес уровня.</summary>
     private static int Rank(string level) => level switch
@@ -51,6 +93,16 @@ public sealed class HubLog : IDisposable
     /// <param name="days">Сколько дней хранить. 0 значит хранить всегда.</param>
     /// <returns>Сколько файлов удалено.</returns>
     public int Prune(int days)
+    {
+        lock (_recent)
+        {
+            _retentionDays = days;
+            return PruneFiles(days);
+        }
+    }
+
+    /// <summary>Удаляет старые файлы. Вызывается под блокировкой.</summary>
+    private int PruneFiles(int days)
     {
         if (days <= 0) return 0;
 
@@ -92,14 +144,19 @@ public sealed class HubLog : IDisposable
             Message = message,
         };
 
-        var line = $"{DateTime.Now:HH:mm:ss.fff} {level,-7} [{source}] {message}";
+        var now = Clock();
+        var line = $"{now:HH:mm:ss.fff} {level,-7} [{source}] {message}";
         lock (_recent)
         {
             _recent.Enqueue(entry);
             if (_recent.Count > MemoryCapacity) _recent.Dequeue();
 
             // Соединения закрываются в фоне и могут писать в журнал уже после завершения.
-            if (!_closed) _file.WriteLine(line);
+            if (!_closed)
+            {
+                RollOver(now);
+                _file.WriteLine(line);
+            }
         }
 
         if (EchoToConsole) Console.WriteLine(line);

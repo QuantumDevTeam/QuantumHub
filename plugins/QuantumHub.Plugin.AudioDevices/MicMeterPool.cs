@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 namespace QuantumHub.Plugin.AudioDevices;
 
 /// <summary>Открытый поток записи одного микрофона.</summary>
@@ -101,7 +102,7 @@ public sealed class MicMeterPool(Func<string, IMicMeter> open, TimeProvider cloc
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _retryAt[id] = now + RetryDelay;
-            warn($"Не удалось открыть микрофон {id}: {ex.Message}");
+            warn(Loc.T($"Не удалось открыть микрофон {id}: {ex.Message}", $"Could not open the microphone {id}: {ex.Message}"));
             return null;
         }
     }

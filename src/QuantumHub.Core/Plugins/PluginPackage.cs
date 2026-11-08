@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.IO.Compression;
 using QuantumHub.Contracts.Proto;
 
@@ -57,7 +58,7 @@ public static class PluginCatalog
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            log.Warning($"Could not remove '{dir}': {ex.Message}");
+            log.Warning(Loc.T($"Не удалось удалить '{dir}': {ex.Message}", $"Could not remove '{dir}': {ex.Message}"));
         }
     }
 
@@ -85,7 +86,7 @@ public static class PluginCatalog
             }
             catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
             {
-                log.Warning($"Could not unpack '{file}': {ex.Message}");
+                log.Warning(Loc.T($"Не удалось распаковать '{file}': {ex.Message}", $"Could not unpack '{file}': {ex.Message}"));
             }
         }
     }
@@ -98,8 +99,7 @@ public static class PluginCatalog
         try
         {
             var path = Path.Combine(dir, ManifestReader.FileName);
-            if (File.Exists(path))
-                return new PluginPackage(dir, ManifestReader.Parse(File.ReadAllText(path)));
+            if (File.Exists(path)) return Checked(dir, ManifestReader.Parse(File.ReadAllText(path)));
 
             foreach (var dll in Directory.EnumerateFiles(dir, "*.dll"))
             {
@@ -108,7 +108,7 @@ public static class PluginCatalog
                 var manifest = ManifestReader.Parse(text);
                 manifest.Service ??= new PluginEntry();
                 if (manifest.Service.Assembly.Length == 0) manifest.Service.Assembly = Path.GetFileName(dll);
-                return new PluginPackage(dir, manifest);
+                return Checked(dir, manifest);
             }
 
             return null;
@@ -120,6 +120,10 @@ public static class PluginCatalog
             return new PluginPackage(dir, new PluginManifest { Id = id, Name = id, Version = "0.0.0" }, ex.Message);
         }
     }
+
+    /// <summary>Собирает пакет. Плагин для другой версии хаба виден в списке, но не запускается.</summary>
+    private static PluginPackage Checked(string dir, PluginManifest manifest) =>
+        new(dir, manifest, ManifestReader.Incompatibility(manifest, Hub.Version));
 
     /// <summary>Смотрит id того, что собираются установить, не устанавливая.</summary>
     /// <param name="source">Архив, DLL или папка.</param>
@@ -172,7 +176,7 @@ public static class PluginCatalog
                 if (File.Exists(deps)) File.Copy(deps, Path.Combine(staging, Path.GetFileName(deps)));
             }
 
-            var package = ReadFolder(staging) ?? throw new InvalidDataException($"No plugin manifest found in '{source}'.");
+            var package = ReadFolder(staging) ?? throw new InvalidDataException(Loc.T($"В '{source}' нет манифеста плагина.", $"No plugin manifest found in '{source}'."));
             if (package.Error is not null) throw new InvalidDataException(package.Error);
 
             var destination = Path.Combine(targetRoot, package.Manifest.Id);

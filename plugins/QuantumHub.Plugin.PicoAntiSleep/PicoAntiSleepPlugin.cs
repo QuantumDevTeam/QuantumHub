@@ -23,7 +23,7 @@ public sealed record SleepRequest(bool Enabled);
 /// <see cref="AntiSleepEngine"/>. Про SteamVR он узнаёт от другого плагина, через возможность vr.session.
 /// </summary>
 [HubPlugin]
-public sealed class PicoAntiSleepPlugin : IHubPlugin, IUiProvider
+public sealed class PicoAntiSleepPlugin : IHubPlugin, IDependencyAware, IUiProvider
 {
     /// <summary>Топик смены состояния.</summary>
     public const string StateTopic = "vr.pico.sleep.changed";
@@ -61,6 +61,10 @@ public sealed class PicoAntiSleepPlugin : IHubPlugin, IUiProvider
         _subscription?.Dispose();
         await _engine.StopAsync();
     }
+
+    /// <inheritdoc/>
+    public async Task OnDependencyRestartedAsync(string providerId, CancellationToken token) =>
+        OnSession((await _context.Bus.CallAsync("cap:vr.session", "session.get", token: token)).AsJson<VrSession>());
 
     private SleepState State() => new(_engine.IsRunning, _engine.Status);
 

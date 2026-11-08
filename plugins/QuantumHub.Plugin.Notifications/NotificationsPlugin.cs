@@ -82,7 +82,7 @@ public sealed class NotificationsPlugin : IHubPlugin, IUiProvider
         context.Bus.Handle("notify.show", (request, _) =>
         {
             var notification = request.Payload.AsJson<NotificationRequest>()
-                               ?? throw new HubCallException(StatusCode.InvalidArgument, "Пустое уведомление.");
+                               ?? throw new HubCallException(StatusCode.InvalidArgument, Loc.T("Пустое уведомление.", "Empty notification."));
             Show(notification);
             return ValueTask.FromResult(HubPayload.Empty);
         });
@@ -90,7 +90,7 @@ public sealed class NotificationsPlugin : IHubPlugin, IUiProvider
         context.Bus.Handle("notify.hide", async (request, token) =>
         {
             var hide = request.Payload.AsJson<NotificationHide>();
-            if (string.IsNullOrEmpty(hide?.Key)) throw new HubCallException(StatusCode.InvalidArgument, "Нужен ключ окошка.");
+            if (string.IsNullOrEmpty(hide?.Key)) throw new HubCallException(StatusCode.InvalidArgument, Loc.T("Нужен ключ окошка.", "A notification key is required."));
 
             Forget(hide.Key);
             await context.Bus.PublishAsync(HideTopic, HubPayload.Json(hide), token);
@@ -102,7 +102,7 @@ public sealed class NotificationsPlugin : IHubPlugin, IUiProvider
         {
             var click = request.Payload.AsJson<NotificationClick>();
             if (string.IsNullOrEmpty(click?.Key) || string.IsNullOrEmpty(click.Action))
-                throw new HubCallException(StatusCode.InvalidArgument, "Нужны ключ окошка и кнопка.");
+                throw new HubCallException(StatusCode.InvalidArgument, Loc.T("Нужны ключ окошка и кнопка.", "A notification key and a button are required."));
 
             Forget(click.Key);
             await context.Bus.PublishAsync(ActionTopic, HubPayload.Json(click), token);

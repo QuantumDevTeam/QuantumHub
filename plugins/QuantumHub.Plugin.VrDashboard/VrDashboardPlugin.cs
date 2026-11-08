@@ -14,7 +14,7 @@ public sealed record VrState(bool Active);
 /// хабе, и её сбой не должен его ронять. Здесь только запуск, настройки и страница состояния.
 /// </summary>
 [HubPlugin]
-public sealed class VrDashboardPlugin : IHubPlugin, IUiProvider
+public sealed class VrDashboardPlugin : IHubPlugin, IDependencyAware, IUiProvider
 {
     /// <summary>Как часто проверять, что панель жива.</summary>
     private static readonly TimeSpan WatchEvery = TimeSpan.FromSeconds(15);
@@ -38,6 +38,10 @@ public sealed class VrDashboardPlugin : IHubPlugin, IUiProvider
         _stop = new CancellationTokenSource();
         _watch = Task.Run(() => WatchAsync(_stop.Token), CancellationToken.None);
     }
+
+    /// <inheritdoc/>
+    public async Task OnDependencyRestartedAsync(string providerId, CancellationToken token) =>
+        OnVr((await _context.Bus.CallAsync("cap:user.activity", "vr.get", token: token)).AsJson<VrState>());
 
     /// <inheritdoc/>
     public async Task StopAsync(CancellationToken token)

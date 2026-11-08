@@ -118,7 +118,7 @@ public sealed class OverlayHost(IOverlayRuntime runtime, IPanelPainter painter, 
             return 1;
         }
 
-        log("Panel is in the SteamVR menu.");
+        log(Loc.T("Панель добавлена в меню SteamVR.", "Panel is in the SteamVR menu."));
         try
         {
             // Данные нужны сразу: иначе при первом открытии вкладка будет пустой.
@@ -183,7 +183,7 @@ public sealed class OverlayHost(IOverlayRuntime runtime, IPanelPainter painter, 
             }
             catch (Exception ex) when (ex is IOException or HubCallException or InvalidOperationException or OperationCanceledException)
             {
-                log($"Refresh failed: {ex.Message}");
+                log(Loc.T($"Обновление не удалось: {ex.Message}", $"Refresh failed: {ex.Message}"));
             }
             finally
             {
@@ -217,14 +217,14 @@ public sealed class OverlayHost(IOverlayRuntime runtime, IPanelPainter painter, 
             if (error is null) return;
 
             // Размер данных для этого вызова ограничен, а файл принимается всегда.
-            log($"SetOverlayRaw failed: {error}. Falling back to a file.");
+            log(Loc.T($"SetOverlayRaw не сработал: {error}. Перехожу на файл.", $"SetOverlayRaw failed: {error}. Falling back to a file."));
             _useFile = true;
         }
 
         _fileIndex ^= 1;
         var path = Path.Combine(Path.GetTempPath(), $"QuantumHub.VrDashboard.{Environment.ProcessId}.{_fileIndex}.png");
         painter.Png(_view, state, path);
-        if (runtime.ShowFile(path) is { } fileError) log($"SetOverlayFromFile failed: {fileError}");
+        if (runtime.ShowFile(path) is { } fileError) log(Loc.T($"SetOverlayFromFile не сработал: {fileError}", $"SetOverlayFromFile failed: {fileError}"));
     }
 
     /// <summary>Разбирает событие панели.</summary>
@@ -276,7 +276,7 @@ public sealed class OverlayHost(IOverlayRuntime runtime, IPanelPainter painter, 
     /// <summary>Открывает клавиатуру SteamVR.</summary>
     private void OpenKeyboard(string purpose, string description, string text)
     {
-        if (runtime.OpenKeyboard(description, text) is { } error) log($"Could not open the keyboard: {error}");
+        if (runtime.OpenKeyboard(description, text) is { } error) log(Loc.T($"Не удалось открыть клавиатуру: {error}", $"Could not open the keyboard: {error}"));
         else _keyboardFor = purpose;
     }
 
@@ -300,7 +300,7 @@ public sealed class OverlayHost(IOverlayRuntime runtime, IPanelPainter painter, 
         }
         catch (Exception ex) when (ex is IOException or HubCallException or InvalidOperationException or OperationCanceledException)
         {
-            log($"Action failed: {ex.Message}");
+            log(Loc.T($"Действие не удалось: {ex.Message}", $"Action failed: {ex.Message}"));
         }
 
         RefreshInBackground();
