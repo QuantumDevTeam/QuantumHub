@@ -3,13 +3,17 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>0.1.1</Version>
+    <Version>1.0.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Authors>QuantumDevTeam</Authors>
     <Company>QuantumDevTeam</Company>
     <Product>QuantumHub</Product>
     <Copyright>Copyright (c) 2026 QuantumDevTeam</Copyright>
     <PackageLicenseExpression>PolyForm-Noncommercial-1.0.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/QuantumDevTeam/QuantumHub</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/QuantumDevTeam/QuantumHub.git</RepositoryUrl>
+    <!-- В NuGet идёт только SDK для авторов плагинов, он включает это сам. -->
+    <IsPackable>false</IsPackable>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <QhDotnet>net10.0</QhDotnet>
     <QhWindows>net10.0-windows</QhWindows>
