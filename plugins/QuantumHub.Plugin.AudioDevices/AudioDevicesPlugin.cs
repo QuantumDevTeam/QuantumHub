@@ -35,7 +35,7 @@ public sealed class AudioDevicesPlugin : IHubPlugin, IUiProvider
         context.Bus.Handle("devices.set", (request, _) =>
         {
             var id = request.Payload.AsJson<SetDefaultRequest>()?.Id;
-            if (string.IsNullOrEmpty(id)) throw new HubCallException(StatusCode.InvalidArgument, "Нужен id устройства.");
+            if (string.IsNullOrEmpty(id)) throw new HubCallException(StatusCode.InvalidArgument, Loc.T("Нужен id устройства.", "A device id is required."));
 
             _audio.SetDefault(id);
             CheckForChange();
@@ -46,7 +46,7 @@ public sealed class AudioDevicesPlugin : IHubPlugin, IUiProvider
         context.Bus.Handle("sessions.volume", async (request, token) =>
         {
             var change = request.Payload.AsJson<SetSessionVolumeRequest>();
-            if (string.IsNullOrEmpty(change?.Process)) throw new HubCallException(StatusCode.InvalidArgument, "Нужно имя процесса.");
+            if (string.IsNullOrEmpty(change?.Process)) throw new HubCallException(StatusCode.InvalidArgument, Loc.T("Нужно имя процесса.", "A process name is required."));
 
             await FadeAsync(change, token);
             return HubPayload.Empty;
@@ -106,7 +106,7 @@ public sealed class AudioDevicesPlugin : IHubPlugin, IUiProvider
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _context.Logger.Warning($"Не удалось прочитать устройства: {ex.Message}");
+                    _context.Logger.Warning(Loc.T($"Не удалось прочитать устройства: {ex.Message}", $"Could not read the devices: {ex.Message}"));
                 }
             }
         }

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using QuantumHub.Contracts.Bus;
+using QuantumHub.Contracts.Links;
 using QuantumHub.Contracts.Plugin;
 using QuantumHub.Contracts.Proto;
 using QuantumHub.Contracts.Ui;
@@ -42,6 +43,17 @@ public sealed class DiscordPlugin : IHubPlugin, IUiProvider
     private CancellationTokenSource? _stop;
     private Task? _loop;
 
+    /// <summary>Значение из параметра state. Параметры ссылки мог написать кто угодно, поэтому незнакомое значение отвергается.</summary>
+    /// <param name="link">Запрос.</param>
+    /// <returns>Новое значение или <see langword="null"/>, чтобы переключить.</returns>
+    public static bool? LinkState(LinkRunRequest link) => link.Params.GetValueOrDefault("state") switch
+    {
+        null or "toggle" => null,
+        "on" => true,
+        "off" => false,
+        _ => throw new HubCallException(StatusCode.InvalidArgument, Loc.T("Параметр state: on, off или toggle.", "The state parameter is on, off or toggle.")),
+    };
+
     /// <inheritdoc/>
     public Task StartAsync(IPluginContext context, CancellationToken token)
     {
@@ -59,6 +71,13 @@ public sealed class DiscordPlugin : IHubPlugin, IUiProvider
 
         Run<VoiceRequest>("voice.mute", request => _engine.SetMuteAsync(request.Value));
         Run<VoiceRequest>("voice.deafen", request => _engine.SetDeafAsync(request.Value));
+        _context.Bus.Handle(HubLink.RunMethod, async (request, _) =>
+        {
+            var link = request.Payload.AsProto<LinkRunRequest>();
+            var value = LinkState(link);
+            await (link.Action == "deafen" ? _engine.SetDeafAsync(value) : _engine.SetMuteAsync(value));
+            return HubPayload.Empty;
+        });
         Run<JoinRequest>("channel.join", request => _engine.SelectChannelAsync(request.ChannelId));
         Run<object>("channel.leave", _ => _engine.SelectChannelAsync(null));
         Run<object>("authorize", _ => _engine.AuthorizeAsync());
@@ -68,13 +87,13 @@ public sealed class DiscordPlugin : IHubPlugin, IUiProvider
         Command("guilds.list", _ => _engine.CommandAsync("GET_GUILDS"));
         Command("channels.list", payload =>
         {
-            var guild = payload.AsJson<GuildRequest>()?.GuildId ?? throw new ArgumentException("Нужен guildId.");
+            var guild = payload.AsJson<GuildRequest>()?.GuildId ?? throw new ArgumentException(Loc.T("Нужен guildId.", "guildId is required."));
             return _engine.CommandAsync("GET_CHANNELS", new JsonObject { ["guild_id"] = guild });
         });
         Command("rpc.command", payload =>
         {
-            var request = payload.AsJson<JsonObject>() ?? throw new ArgumentException("Пустой запрос.");
-            var name = request["cmd"]?.GetValue<string>() ?? throw new ArgumentException("Нужно поле cmd.");
+            var request = payload.AsJson<JsonObject>() ?? throw new ArgumentException(Loc.T("Пустой запрос.", "Empty request."));
+            var name = request["cmd"]?.GetValue<string>() ?? throw new ArgumentException(Loc.T("Нужно поле cmd.", "The cmd field is required."));
             return _engine.CommandAsync(name, request["args"]?.DeepClone().AsObject(), request["evt"]?.GetValue<string>());
         });
 

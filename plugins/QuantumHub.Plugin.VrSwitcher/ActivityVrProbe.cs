@@ -19,6 +19,12 @@ public sealed class ActivityVrProbe : IVrProbe, IDisposable
         Apply(await bus.CallAsync("cap:user.activity", "vr.get", token: token));
     }
 
+    /// <summary>Читает состояние заново, когда плагин активности перезапустился.</summary>
+    /// <param name="bus">Шина хаба.</param>
+    /// <param name="token">Отмена.</param>
+    public async Task RefreshAsync(IHubBus bus, CancellationToken token) =>
+        Apply(await bus.CallAsync("cap:user.activity", "vr.get", token: token));
+
     private void Apply(HubPayload payload) => _running = payload.AsJson<VrState>()?.Active == true;
 
     /// <inheritdoc/>

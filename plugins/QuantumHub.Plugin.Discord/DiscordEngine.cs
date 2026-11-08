@@ -346,7 +346,7 @@ public sealed class DiscordEngine(
         }
         catch (Exception ex) when (ex is DiscordRpcException or TimeoutException or IOException or ObjectDisposedException)
         {
-            log($"Не удалось прочитать канал: {ex.Message}");
+            log(Loc.T($"Не удалось прочитать канал: {ex.Message}", $"Could not read the channel: {ex.Message}"));
         }
     }
 

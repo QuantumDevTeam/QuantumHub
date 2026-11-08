@@ -2,10 +2,14 @@
 {
   "id": "qh.sample.uuid",
   "name": "UUID Backend",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "hub": ">=1.0.0 <2.0.0",
   "description": "Серверная часть теста IPC: принимает UUID и текст от внешней программы, хранит их и показывает здесь.",
   "author": "QuantumDevTeam",
   "service": { "assembly": "QuantumHub.Plugin.UuidBackend.dll" },
+  "links": [
+    { "action": "submit", "title": "Сохранить значение", "description": "Значение берётся из параметра value." }
+  ],
   "settings": [
     {
       "key": "historySize",
@@ -27,6 +31,9 @@
   "locales": {
     "en": {
       "description": "Server half of the IPC test: takes a UUID and text from an external program, stores them and shows them here.",
+      "links": {
+        "submit": { "title": "Store a value", "description": "The value comes from the value parameter." }
+      },
       "settings": {
         "historySize": {
           "title": "History size",

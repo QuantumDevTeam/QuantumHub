@@ -53,7 +53,7 @@ public sealed class AdbProcessRunner(Func<string?> findAdb) : IAdbRunner
         catch (OperationCanceledException) when (!token.IsCancellationRequested)
         {
             process.Kill(true);
-            return new AdbResult(-1, $"adb {arguments}: нет ответа");
+            return new AdbResult(-1, Loc.T($"adb {arguments}: нет ответа", $"adb {arguments}: no answer"));
         }
 
         await Task.WhenAny(Task.WhenAll(output, error), Task.Delay(500, token));

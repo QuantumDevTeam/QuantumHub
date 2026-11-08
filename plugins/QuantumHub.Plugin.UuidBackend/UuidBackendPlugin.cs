@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Links;
 using QuantumHub.Contracts.Bus;
 using QuantumHub.Contracts.Plugin;
 using QuantumHub.Contracts.Proto;
@@ -34,8 +35,15 @@ public sealed class UuidBackendPlugin : IHubPlugin, IUiProvider
         context.Bus.Handle("value.submit", (request, _) =>
         {
             var submit = request.Payload.AsJson<SubmitRequest>()
-                         ?? throw new HubCallException(StatusCode.InvalidArgument, "Empty request.");
+                         ?? throw new HubCallException(StatusCode.InvalidArgument, Loc.T("Пустой запрос.", "Empty request."));
             return ValueTask.FromResult(HubPayload.Json(Store(submit.Kind, submit.Value, request.Source)));
+        });
+        context.Bus.Handle(HubLink.RunMethod, (request, _) =>
+        {
+            var link = request.Payload.AsProto<LinkRunRequest>();
+            if (!link.Params.TryGetValue("value", out var value) || value.Length == 0)
+                throw new HubCallException(StatusCode.InvalidArgument, Loc.T("В ссылке нет значения.", "The link has no value."));
+            return ValueTask.FromResult(HubPayload.Json(Store("link", value, request.Source)));
         });
         context.Bus.Handle("value.latest", (_, _) =>
             ValueTask.FromResult(HubPayload.Text(context.Config.Get("lastValue", string.Empty)!)));
@@ -72,7 +80,7 @@ public sealed class UuidBackendPlugin : IHubPlugin, IUiProvider
 
             PushState();
             _ = _context.Bus.PublishAsync("uuid.updated", HubPayload.Text(value));
-            _context.Logger.Info($"Stored {kind} from {source}");
+            _context.Logger.Info(Loc.T($"Сохранено {kind} от {source}", $"Stored {kind} from {source}"));
             return new SubmitResponse(total, Display(value));
         }
     }

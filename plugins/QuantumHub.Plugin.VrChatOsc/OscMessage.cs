@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Buffers.Binary;
 using System.Text;
 
@@ -29,7 +30,7 @@ public static class OscMessage
                 false => 'F',
                 int => 'i',
                 float => 'f',
-                _ => throw new ArgumentException($"OSC не поддерживает {argument.GetType().Name}.", nameof(arguments)),
+                _ => throw new ArgumentException(Loc.T($"OSC не поддерживает {argument.GetType().Name}.", $"OSC does not support {argument.GetType().Name}."), nameof(arguments)),
             });
         }
 

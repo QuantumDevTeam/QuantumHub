@@ -70,6 +70,14 @@ public sealed class BusVrState : IVrState, IDisposable
     public async Task StartAsync(IHubBus bus, CancellationToken token)
     {
         _subscription = await bus.SubscribeAsync("vr.session.changed", e => Apply(e.Payload), token);
+        await RefreshAsync(bus, token);
+    }
+
+    /// <summary>Читает состояние сессии.</summary>
+    /// <param name="bus">Шина хаба.</param>
+    /// <param name="token">Отмена.</param>
+    public async Task RefreshAsync(IHubBus bus, CancellationToken token)
+    {
         try
         {
             Apply(await bus.CallAsync("cap:vr.session", "session.get", token: token));

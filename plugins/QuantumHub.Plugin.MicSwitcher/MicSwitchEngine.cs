@@ -236,7 +236,7 @@ public sealed class MicSwitchEngine(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            log($"Не удалось показать подсказку: {ex.Message}"); // Статус на странице всё равно о ней скажет.
+            log(Loc.T($"Не удалось показать подсказку: {ex.Message}", $"Could not show the hint: {ex.Message}")); // Статус на странице всё равно о ней скажет.
         }
     }
 
@@ -249,7 +249,7 @@ public sealed class MicSwitchEngine(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            log($"Не удалось переключить на {mic.Name}: {ex.Message}");
+            log(Loc.T($"Не удалось переключить на {mic.Name}: {ex.Message}", $"Could not switch to {mic.Name}: {ex.Message}"));
             Remember(Loc.T($"Не удалось переключить на «{mic.Name}»", $"Could not switch to \"{mic.Name}\""));
         }
     }
@@ -261,7 +261,7 @@ public sealed class MicSwitchEngine(
         Mics = Mics.Select(mic => mic with { IsDefault = mic.Id == id }).ToList();
         await CloseHintAsync();
 
-        log($"Микрофон: {name}");
+        log(Loc.T($"Микрофон: {name}", $"Microphone: {name}"));
         Remember(Loc.T($"Переключено на «{name}»", $"Switched to \"{name}\""));
     }
 
@@ -276,7 +276,7 @@ public sealed class MicSwitchEngine(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            log($"Не удалось убрать подсказку: {ex.Message}"); // Сама исчезнет по времени.
+            log(Loc.T($"Не удалось убрать подсказку: {ex.Message}", $"Could not remove the hint: {ex.Message}")); // Сама исчезнет по времени.
         }
     }
 
