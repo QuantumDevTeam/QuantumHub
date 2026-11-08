@@ -101,6 +101,28 @@ message InstallRequest {
   string path = 1;
 }
 
+// Запрос hub.links.run. Плагин получает это же сообщение в методе link.run.
+message LinkRunRequest {
+  // Id плагина.
+  string plugin_id = 1;
+  // Имя действия из манифеста.
+  string action = 2;
+  // Параметры из ссылки. Их мог написать кто угодно, поэтому плагин обязан их проверять.
+  map<string, string> params = 3;
+}
+
+// Запрос hub.diagnostics.export.
+message DiagnosticsRequest {
+  // Куда записать архив. По умолчанию в папку diagnostics внутри данных.
+  string path = 1;
+}
+
+// Ответ hub.diagnostics.export.
+message DiagnosticsResponse {
+  // Путь к готовому архиву.
+  string path = 1;
+}
+
 // Запрос файла плагина.
 message AssetRequest {
   // Id плагина.

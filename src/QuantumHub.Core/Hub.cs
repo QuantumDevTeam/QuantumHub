@@ -57,6 +57,9 @@ public sealed class Hub : IAsyncDisposable
     /// <summary>Топик смены языка. В теле код языка.</summary>
     public const string LanguageTopic = "hub.language.changed";
 
+    /// <summary>Топик: хаб завершается по просьбе клиента. В теле id того, кто попросил.</summary>
+    public const string StoppingTopic = "hub.stopping";
+
     /// <summary>Топик: плагин сменил состояние.</summary>
     public const string PluginStateTopic = "hub.plugin.state";
     /// <summary>Топик: плагин удалён.</summary>
@@ -120,7 +123,8 @@ public sealed class Hub : IAsyncDisposable
     /// <summary>Запускает хаб: находит плагины, открывает приём подключений, стартует плагины.</summary>
     public async Task StartAsync()
     {
-        Log.Info($"QuantumHub {Version} starting from {Paths.RootDir}");
+        Log.Info(Loc.T($"QuantumHub {Version} запускается из {Paths.RootDir}", $"QuantumHub {Version} starting from {Paths.RootDir}"));
+        Log.Info($"Windows {Environment.OSVersion.Version}, .NET {Environment.Version}");
 
         Router.Register(Envelopes.HubTarget, new HubApi(this));
         Router.ActivateTarget = ActivateTargetAsync;
@@ -134,7 +138,7 @@ public sealed class Hub : IAsyncDisposable
         Server.Start();
         await Plugins.StartAllAsync();
 
-        Log.Info($"Ready. Transports: {string.Join(", ", Server.Transports)}");
+        Log.Info(Loc.T($"Готов. Транспорты: {string.Join(", ", Server.Transports)}", $"Ready. Transports: {string.Join(", ", Server.Transports)}"));
     }
 
     /// <summary>Находит адресата, которого ещё нет в таблице роутера: возможность или плагин по требованию.</summary>
@@ -145,10 +149,14 @@ public sealed class Hub : IAsyncDisposable
             : target;
         if (id is null) return null;
 
-        if (Plugins.IsKnown(id)) await Plugins.EnsureStartedAsync(id).WaitAsync(token);
-
         // Если это плагин, он уже зарегистрирован. Подключённый клиент был зарегистрирован с самого начала.
-        return Router.Find(id);
+        // Повтор нужен, когда плагин успели перезапустить ещё раз, пока вызов просыпался.
+        while (true)
+        {
+            if (Plugins.IsKnown(id)) await Plugins.EnsureStartedAsync(id).WaitAsync(token);
+            if (Router.Find(id) is { } endpoint) return endpoint;
+            if (!Plugins.IsRestarting(id)) return null;
+        }
     }
 
     /// <summary>Настройка языка: "auto", "ru" или "en".</summary>
@@ -162,10 +170,10 @@ public sealed class Hub : IAsyncDisposable
     private void ApplyLogSettings()
     {
         // Конфиг можно поправить руками, и неверное значение не должно мешать хабу запуститься.
-        Log.MinLevel = Config.Get(ConfigOwner, LogLevelKey) is JsonValue level && level.TryGetValue<string>(out var name) ? name : "debug";
-        var days = Config.Get(ConfigOwner, LogRetentionKey) is JsonValue value && value.TryGetValue<int>(out var number) ? number : 0;
+        Log.MinLevel = Config.Get(ConfigOwner, LogLevelKey) is JsonValue level && level.TryGetValue<string>(out var name) ? name : HubLog.DefaultLevel;
+        var days = Config.Get(ConfigOwner, LogRetentionKey) is JsonValue value && value.TryGetValue<int>(out var number) ? number : HubLog.DefaultRetentionDays;
         var removed = Log.Prune(days);
-        if (removed > 0) Log.Info($"Removed {removed} old log files");
+        if (removed > 0) Log.Info(Loc.T($"Удалено старых файлов журнала: {removed}", $"Removed {removed} old log files"));
     }
 
     /// <summary>Рассылает запись журнала.</summary>
@@ -207,7 +215,7 @@ public sealed class Hub : IAsyncDisposable
     /// <summary>Завершает работу: отключает клиентов, останавливает плагины, сохраняет настройки.</summary>
     public async ValueTask DisposeAsync()
     {
-        Log.Info("Shutting down");
+        Log.Info(Loc.T("Завершение работы", "Shutting down"));
         Server.Dispose();
         await Plugins.StopAllAsync();
         Config.Dispose();

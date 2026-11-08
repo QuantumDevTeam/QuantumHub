@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Google.Protobuf;
 using QuantumHub.Contracts.Bus;
+using QuantumHub.Contracts.Links;
 using QuantumHub.Contracts.Proto;
 using QuantumHub.Contracts.Ui;
 using QuantumHub.Core.Routing;
@@ -54,6 +55,8 @@ public sealed class HubApi(Hub hub) : IEndpoint
                 return HubPayload.Proto(hub.GetStatus());
 
             case "hub.shutdown":
+                // До ответа: окно должно знать, что хаб остановили нарочно, и не поднимать его снова.
+                hub.Router.Publish(Hub.ConfigOwner, Hub.StoppingTopic, HubPayload.Text(request.Source));
                 hub.RequestShutdown();
                 return default;
 
@@ -103,6 +106,12 @@ public sealed class HubApi(Hub hub) : IEndpoint
             case "hub.logs.get":
                 return HubPayload.Proto(new LogList { Entries = { hub.Log.Recent() } });
 
+            case "hub.links.run":
+                return await RunLinkAsync(request.Source, payload.AsProto<LinkRunRequest>(), token);
+
+            case "hub.diagnostics.export":
+                return HubPayload.Proto(new DiagnosticsResponse { Path = Diagnostics.Export(hub, payload.AsProto<DiagnosticsRequest>().Path) });
+
             case "hub.ui.get":
                 return HubPayload.Proto(await GetUiAsync(payload.AsProto<UiRequest>().PluginId, token));
 
@@ -111,8 +120,24 @@ public sealed class HubApi(Hub hub) : IEndpoint
                 return default;
 
             default:
-                throw new HubCallException(StatusCode.NotFound, $"The hub has no method '{request.Method}'.");
+                throw new HubCallException(StatusCode.NotFound, Loc.T($"У хаба нет метода '{request.Method}'.", $"The hub has no method '{request.Method}'."));
         }
+    }
+
+    /// <summary>
+    /// Запускает действие плагина по ссылке. Ссылку может подсунуть кто угодно, поэтому доступны только действия из манифеста,
+    /// а произвольные методы плагинов и самого хаба ссылкам закрыты.
+    /// </summary>
+    private async Task<HubPayload> RunLinkAsync(string source, LinkRunRequest link, CancellationToken token)
+    {
+        var manifest = hub.Plugins.GetManifest(link.PluginId)
+                       ?? throw new HubCallException(StatusCode.NotFound, Loc.T($"Плагин '{link.PluginId}' не установлен.", $"Plugin '{link.PluginId}' is not installed."));
+        if (manifest.Links.All(item => item.Action != link.Action))
+            throw new HubCallException(StatusCode.NotFound, Loc.T($"У плагина '{link.PluginId}' нет действия '{link.Action}' для ссылок.", $"Plugin '{link.PluginId}' has no link action '{link.Action}'."));
+
+        hub.Log.Info(Loc.T($"Действие по ссылке {link.PluginId}/{link.Action}, запросил {source}", $"Link action {link.PluginId}/{link.Action} from {source}"));
+        var request = Envelopes.Request(Envelopes.HubTarget, link.PluginId, HubLink.RunMethod, HubPayload.Proto(link));
+        return (await hub.Router.RequestAsync(request, token)).Unwrap();
     }
 
     /// <summary>Разбирает JSON из запроса.</summary>
@@ -124,7 +149,7 @@ public sealed class HubApi(Hub hub) : IEndpoint
         }
         catch (JsonException ex)
         {
-            throw new HubCallException(StatusCode.InvalidArgument, $"Invalid JSON: {ex.Message}");
+            throw new HubCallException(StatusCode.InvalidArgument, Loc.T($"Неверный JSON: {ex.Message}", $"Invalid JSON: {ex.Message}"));
         }
     }
 
@@ -140,24 +165,24 @@ public sealed class HubApi(Hub hub) : IEndpoint
     private AssetResponse GetAsset(AssetRequest request)
     {
         var manifest = hub.Plugins.GetManifest(request.PluginId)
-                       ?? throw new HubCallException(StatusCode.NotFound, $"Plugin '{request.PluginId}' is not installed.");
+                       ?? throw new HubCallException(StatusCode.NotFound, Loc.T($"Плагин '{request.PluginId}' не установлен.", $"Plugin '{request.PluginId}' is not installed."));
         var dir = hub.Plugins.GetDirectory(request.PluginId)!;
         var name = request.Name.Length > 0 ? request.Name : manifest.Icon;
-        if (name.Length == 0) throw new HubCallException(StatusCode.NotFound, "The plugin has no icon.");
+        if (name.Length == 0) throw new HubCallException(StatusCode.NotFound, Loc.T("У плагина нет значка.", "The plugin has no icon."));
 
         const string embedded = "embedded:";
         if (name.StartsWith(embedded, StringComparison.Ordinal))
         {
             var resource = name[embedded.Length..];
             var bytes = Plugins.ManifestReader.ReadEmbedded(Path.Combine(dir, manifest.Service.Assembly), resource)
-                        ?? throw new HubCallException(StatusCode.NotFound, $"No embedded resource '{resource}'.");
+                        ?? throw new HubCallException(StatusCode.NotFound, Loc.T($"Нет встроенного ресурса '{resource}'.", $"No embedded resource '{resource}'."));
             return new AssetResponse { Data = ByteString.CopyFrom(bytes), FileName = resource };
         }
 
         var root = Path.GetFullPath(dir) + Path.DirectorySeparatorChar;
         var path = Path.GetFullPath(Path.Combine(root, name));
         if (!path.StartsWith(root, StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
-            throw new HubCallException(StatusCode.NotFound, $"No asset '{name}'.");
+            throw new HubCallException(StatusCode.NotFound, Loc.T($"Нет файла '{name}'.", $"No asset '{name}'."));
 
         return new AssetResponse { Data = ByteString.CopyFrom(File.ReadAllBytes(path)), FileName = Path.GetFileName(path) };
     }
@@ -180,7 +205,7 @@ public sealed class HubApi(Hub hub) : IEndpoint
             }
             catch (HubCallException ex)
             {
-                hub.Log.Warning($"{pluginId} did not start for its page: {ex.Message}");
+                hub.Log.Warning(Loc.T($"{pluginId} не запустился для своей страницы: {ex.Message}", $"{pluginId} did not start for its page: {ex.Message}"));
             }
         }
 

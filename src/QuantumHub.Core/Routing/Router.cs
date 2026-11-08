@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using QuantumHub.Contracts.Bus;
@@ -53,7 +54,7 @@ public sealed class Router
             {
                 endpoint = ActivateTarget is null ? null : await ActivateTarget(request.Target, token);
                 if (endpoint is null)
-                    return Envelopes.Error(request, StatusCode.NotFound, $"Nothing is listening at '{request.Target}'.");
+                    return Envelopes.Error(request, StatusCode.NotFound, Loc.T($"По адресу '{request.Target}' никого нет.", $"Nothing is listening at '{request.Target}'."));
             }
 
             // Плагин, который не отвечает, не должен оставлять вызывающего ждать вечно.
@@ -61,11 +62,11 @@ public sealed class Router
         }
         catch (TimeoutException)
         {
-            return Envelopes.Error(request, StatusCode.Timeout, $"'{request.Target}' did not answer '{request.Method}' in time.");
+            return Envelopes.Error(request, StatusCode.Timeout, Loc.T($"'{request.Target}' не ответил на '{request.Method}' вовремя.", $"'{request.Target}' did not answer '{request.Method}' in time."));
         }
         catch (OperationCanceledException)
         {
-            return Envelopes.Error(request, StatusCode.Unavailable, "The request was cancelled.");
+            return Envelopes.Error(request, StatusCode.Unavailable, Loc.T("Запрос отменён.", "The request was cancelled."));
         }
         catch (HubCallException ex)
         {

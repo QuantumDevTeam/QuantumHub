@@ -1,5 +1,6 @@
 using QuantumHub.Contracts.Ui;
 using QuantumHub.Contracts.Bus;
+using QuantumHub.Contracts.Plugin;
 using QuantumHub.Contracts.Proto;
 using QuantumHub.Core.Routing;
 
@@ -51,6 +52,8 @@ public sealed class PluginManager(Hub hub)
         public Task? StartTask { get; set; }
         /// <summary>Запущенный плагин.</summary>
         public LoadedPlugin? Loaded { get; set; }
+        /// <summary>Идёт перезапуск. Вызовы, пришедшие в этот момент, ждут его конца, а не получают ошибку.</summary>
+        public TaskCompletionSource? Restart { get; set; }
         public PluginManifest Manifest => Package.Manifest;
     }
 
@@ -81,7 +84,7 @@ public sealed class PluginManager(Hub hub)
             }
         }
 
-        hub.Log.Info($"Found {packages.Count} plugin(s).");
+        hub.Log.Info(Loc.T($"Найдено плагинов: {packages.Count}.", $"Found {packages.Count} plugin(s)."));
     }
 
     /// <summary>Читает список выключенных плагинов.</summary>
@@ -157,6 +160,13 @@ public sealed class PluginManager(Hub hub)
         lock (_gate) return _entries.TryGetValue(id, out var entry) && entry.State == PluginState.Running;
     }
 
+    /// <summary>Идёт ли перезапуск плагина.</summary>
+    /// <param name="id">Id плагина.</param>
+    public bool IsRestarting(string id)
+    {
+        lock (_gate) return _entries.TryGetValue(id, out var entry) && (entry.Restart is not null || entry.StartTask is { IsCompleted: false });
+    }
+
     /// <summary>Все плагины с состояниями.</summary>
     public PluginList List()
     {
@@ -200,7 +210,7 @@ public sealed class PluginManager(Hub hub)
             foreach (var entry in _entries.Values)
             {
                 var reason = entry.Package.Error is not null ? entry.Package.Error
-                    : !entry.Enabled ? "the plugin is disabled"
+                    : !entry.Enabled ? Loc.T("плагин выключен", "the plugin is disabled")
                     : null;
                 candidates.Add(new ProviderCandidate(entry.Manifest.Id, entry.Manifest.Version, entry.Manifest.Provides, reason));
             }
@@ -247,12 +257,13 @@ public sealed class PluginManager(Hub hub)
         lock (_gate)
         {
             if (!_entries.TryGetValue(id, out var entry))
-                return Task.FromException(new HubCallException(StatusCode.NotFound, $"Plugin '{id}' is not installed."));
+                return Task.FromException(new HubCallException(StatusCode.NotFound, Loc.T($"Плагин '{id}' не установлен.", $"Plugin '{id}' is not installed.")));
             if (entry.Package.Error is not null)
-                return Task.FromException(new HubCallException(StatusCode.FailedPrecondition, $"Plugin '{id}' is broken: {entry.Package.Error}"));
+                return Task.FromException(new HubCallException(StatusCode.FailedPrecondition, Loc.T($"Плагин '{id}' сломан: {entry.Package.Error}", $"Plugin '{id}' is broken: {entry.Package.Error}")));
             if (!entry.Enabled)
-                return Task.FromException(new HubCallException(StatusCode.FailedPrecondition, $"Plugin '{id}' is disabled."));
+                return Task.FromException(new HubCallException(StatusCode.FailedPrecondition, Loc.T($"Плагин '{id}' выключен.", $"Plugin '{id}' is disabled.")));
 
+            if (entry.Restart is { } restart) return restart.Task;
             return entry.StartTask ??= StartCoreAsync(entry);
         }
     }
@@ -265,31 +276,33 @@ public sealed class PluginManager(Hub hub)
         try
         {
             if (DependencyResolver.FindCycle(id, InitEdges) is { } cycle)
-                throw new DependencyBlockedException($"Dependency cycle: {string.Join(" -> ", cycle)}");
+                throw new DependencyBlockedException(Loc.T($"Зависимости замкнулись в круг: {string.Join(" -> ", cycle)}", $"Dependency cycle: {string.Join(" -> ", cycle)}"));
 
             await StartDependenciesAsync(entry);
 
             SetState(entry, PluginState.Starting);
-            hub.Log.Info($"Starting {id} {entry.Manifest.Version}");
+            hub.Log.Info(Loc.T($"Запускается {id} {entry.Manifest.Version}", $"Starting {id} {entry.Manifest.Version}"));
 
             var loaded = new LoadedPlugin(hub, entry.Package);
             entry.Loaded = loaded;
             using var timeout = new CancellationTokenSource(StartTimeout);
             await loaded.StartAsync(timeout.Token).WaitAsync(timeout.Token);
 
+            // Причина прошлой остановки больше не верна, а показывать её рядом с работающим плагином значит пугать зря.
+            entry.Error = string.Empty;
             SetState(entry, PluginState.Running);
         }
         catch (DependencyBlockedException ex)
         {
             Fail(entry, PluginState.Blocked, ex.Message);
-            throw new HubCallException(StatusCode.FailedPrecondition, $"'{id}' cannot start: {ex.Message}");
+            throw new HubCallException(StatusCode.FailedPrecondition, Loc.T($"'{id}' не может запуститься: {ex.Message}", $"'{id}' cannot start: {ex.Message}"));
         }
         catch (Exception ex)
         {
             await DiscardAsync(entry);
             Fail(entry, PluginState.Faulted, ex.Message);
-            hub.Log.Error($"{id} failed to start: {ex}");
-            throw new HubCallException(StatusCode.Internal, $"'{id}' failed to start: {ex.Message}");
+            hub.Log.Error(Loc.T($"{id} не запустился: {ex}", $"{id} failed to start: {ex}"));
+            throw new HubCallException(StatusCode.Internal, Loc.T($"'{id}' не запустился: {ex.Message}", $"'{id}' failed to start: {ex.Message}"));
         }
     }
 
@@ -302,7 +315,7 @@ public sealed class PluginManager(Hub hub)
             if (result.State == DependencyState.Resolved) continue;
 
             if (dependency.Optional)
-                hub.Log.Info($"{entry.Manifest.Id}: optional dependency unavailable: {result.Detail}");
+                hub.Log.Info(Loc.T($"{entry.Manifest.Id}: необязательная зависимость недоступна: {result.Detail}", $"{entry.Manifest.Id}: optional dependency unavailable: {result.Detail}"));
             else
                 throw new DependencyBlockedException(result.Detail);
         }
@@ -340,12 +353,13 @@ public sealed class PluginManager(Hub hub)
     /// <param name="entry">Плагин.</param>
     /// <param name="finalState">Состояние после остановки.</param>
     /// <param name="reason">Причина для показа пользователю.</param>
-    private async Task StopCoreAsync(Entry entry, PluginState finalState, string reason = "")
+    /// <param name="keepDependents">Плагин скоро вернётся, поэтому зависимые остаются работать.</param>
+    private async Task StopCoreAsync(Entry entry, PluginState finalState, string reason = "", bool keepDependents = false)
     {
-        foreach (var dependent in RequiredDependents(entry.Manifest.Id))
+        foreach (var dependent in keepDependents ? [] : RequiredDependents(entry.Manifest.Id))
         {
             if (dependent.Loaded is not null)
-                await StopCoreAsync(dependent, PluginState.Blocked, $"'{entry.Manifest.Id}' was stopped.");
+                await StopCoreAsync(dependent, PluginState.Blocked, Loc.T($"'{entry.Manifest.Id}' остановлен.", $"'{entry.Manifest.Id}' was stopped."));
         }
 
         Task? pendingStart;
@@ -358,7 +372,7 @@ public sealed class PluginManager(Hub hub)
         if (entry.Loaded is not null)
         {
             SetState(entry, PluginState.Stopping);
-            hub.Log.Info($"Stopping {entry.Manifest.Id}");
+            hub.Log.Info(Loc.T($"Останавливается {entry.Manifest.Id}", $"Stopping {entry.Manifest.Id}"));
             await DiscardAsync(entry);
         }
 
@@ -381,7 +395,7 @@ public sealed class PluginManager(Hub hub)
         }
         catch (Exception ex)
         {
-            hub.Log.Warning($"{entry.Manifest.Id} did not stop cleanly: {ex.Message}");
+            hub.Log.Warning(Loc.T($"{entry.Manifest.Id} остановился с ошибкой: {ex.Message}", $"{entry.Manifest.Id} did not stop cleanly: {ex.Message}"));
         }
 
         loaded.Unload();
@@ -439,21 +453,64 @@ public sealed class PluginManager(Hub hub)
         }
     }
 
-    /// <summary>Перезапускает плагин.</summary>
+    /// <summary>
+    /// Перезапускает плагин. Зависимые продолжают работать: подписки живут в роутере, а вызовы на время перезапуска просто ждут.
+    /// Потом зависимые получают <see cref="IDependencyAware.OnDependencyRestartedAsync"/>, чтобы вернуть то, что хранилось в старом экземпляре.
+    /// Останавливаются они, только если плагин не поднялся.
+    /// </summary>
     /// <param name="id">Id плагина.</param>
     public async Task RestartAsync(string id)
     {
         await _admin.WaitAsync();
         try
         {
-            await StopCoreAsync(GetEntry(id), PluginState.Stopped);
-            await EnsureStartedAsync(id);
+            var entry = GetEntry(id);
+            var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            lock (_gate) entry.Restart = gate;
+            try
+            {
+                await StopCoreAsync(entry, PluginState.Stopped, keepDependents: true);
+                lock (_gate) entry.Restart = null;
+                await EnsureStartedAsync(id);
+                gate.TrySetResult();
+            }
+            catch (Exception ex)
+            {
+                lock (_gate) entry.Restart = null;
+                gate.TrySetException(ex);
+                foreach (var dependent in RequiredDependents(id))
+                {
+                    if (dependent.Loaded is not null)
+                        await StopCoreAsync(dependent, PluginState.Blocked, Loc.T($"'{id}' не поднялся после перезапуска.", $"'{id}' did not come back after a restart."));
+                }
+
+                throw;
+            }
+
+            await NotifyDependentsAsync(id);
             await RetryBlockedAsync();
         }
         finally
         {
             _admin.Release();
         }
+    }
+
+    /// <summary>Сообщает всем, кто пользуется плагином, даже необязательно, что он начал работу заново.</summary>
+    private async Task NotifyDependentsAsync(string id)
+    {
+        var candidates = Candidates();
+        List<LoadedPlugin> users;
+        lock (_gate)
+        {
+            users = _entries.Values
+                .Where(entry => entry.Manifest.Id != id && entry.Loaded is not null && entry.State == PluginState.Running &&
+                                entry.Manifest.Dependencies.Any(dependency => DependencyResolver.Match(dependency, candidates).ProviderId == id))
+                .Select(entry => entry.Loaded!)
+                .ToList();
+        }
+
+        await Task.WhenAll(users.Select(user => user.NotifyDependencyRestartedAsync(id)));
     }
 
     /// <summary>Устанавливает или обновляет плагин без перезапуска хаба.</summary>
@@ -465,13 +522,31 @@ public sealed class PluginManager(Hub hub)
         try
         {
             var incoming = PluginCatalog.Inspect(source);
+
+            // До остановки старой версии: файл, который всё равно не встанет, не должен её выключать.
+            if (incoming is not null && ManifestReader.Incompatibility(incoming.Manifest, Hub.Version) is { } reason)
+                throw new InvalidDataException(reason);
+
+            Entry? replaced = null;
             if (incoming is not null && TryGetEntry(incoming, out var previous))
             {
                 await StopCoreAsync(previous, PluginState.Stopped);
                 await WaitForUnloadAsync();
+                replaced = previous;
             }
 
-            var package = PluginCatalog.Install(source, hub.Paths.InstallTargetDir());
+            PluginPackage package;
+            try
+            {
+                package = PluginCatalog.Install(source, hub.Paths.InstallTargetDir());
+            }
+            catch (Exception ex) when (replaced is not null && ex is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                // Установленная версия цела: установка меняет файлы только в самом конце.
+                if (replaced.Enabled && replaced.Manifest.Activation != OnDemandActivation) await TryStartAsync(replaced.Manifest.Id);
+                throw;
+            }
+
             var id = package.Manifest.Id;
 
             Entry entry;
@@ -483,7 +558,7 @@ public sealed class PluginManager(Hub hub)
 
             SaveDisabled();
             hub.Config.ApplyDefaults(package.Manifest);
-            hub.Log.Info($"Installed {id} {package.Manifest.Version}");
+            hub.Log.Info(Loc.T($"Установлен {id} {package.Manifest.Version}", $"Installed {id} {package.Manifest.Version}"));
             SetState(entry, PluginState.Stopped);
 
             if (package.Manifest.Activation != OnDemandActivation) await TryStartAsync(id);
@@ -518,11 +593,11 @@ public sealed class PluginManager(Hub hub)
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                hub.Log.Warning($"Files of {id} are in use and stay until the next restart: {ex.Message}");
+                hub.Log.Warning(Loc.T($"Файлы {id} заняты и останутся до следующего запуска: {ex.Message}", $"Files of {id} are in use and stay until the next restart: {ex.Message}"));
                 File.WriteAllText(Path.Combine(entry.Package.Directory, PluginCatalog.PendingDeleteMarker), string.Empty);
             }
 
-            hub.Log.Info($"Uninstalled {id}");
+            hub.Log.Info(Loc.T($"Удалён {id}", $"Uninstalled {id}"));
             hub.Router.Publish(Hub.ConfigOwner, Hub.PluginRemovedTopic, HubPayload.Text(id));
         }
         finally
@@ -595,7 +670,7 @@ public sealed class PluginManager(Hub hub)
         {
             return _entries.TryGetValue(id, out var entry)
                 ? entry
-                : throw new HubCallException(StatusCode.NotFound, $"Plugin '{id}' is not installed.");
+                : throw new HubCallException(StatusCode.NotFound, Loc.T($"Плагин '{id}' не установлен.", $"Plugin '{id}' is not installed."));
         }
     }
 

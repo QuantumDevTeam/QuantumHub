@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
 using QuantumHub.Contracts.Proto;
@@ -21,6 +22,8 @@ public sealed class ConfigStore : IDisposable
     private readonly ConcurrentDictionary<string, Document> _documents = new();
     /// <summary>Откладывает запись. Каждое изменение сдвигает её заново.</summary>
     private readonly Timer _timer;
+    /// <summary>Запись на диск идёт только одна за раз.</summary>
+    private readonly object _flushGate = new();
 
     /// <summary>Создаёт хранилище.</summary>
     /// <param name="dir">Папка конфигов.</param>
@@ -36,8 +39,12 @@ public sealed class ConfigStore : IDisposable
     public event Action<string, string>? Changed;
 
     /// <summary>Находит документ или читает его с диска. Испорченный файл откладывается в сторону, его не перезаписывают.</summary>
+    /// <exception cref="InvalidDataException">Такое имя вывело бы файл за папку конфигов.</exception>
     private Document Open(string owner) => _documents.GetOrAdd(owner, id =>
     {
+        if (id.Length == 0 || id.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || id is "." or "..")
+            throw new InvalidDataException(Loc.T($"'{id}' не может быть владельцем настроек.", $"'{id}' cannot own a config."));
+
         var path = Path.Combine(_dir, $"{id}.jsonc");
         JsonObject values = [];
         if (File.Exists(path))
@@ -49,7 +56,7 @@ public sealed class ConfigStore : IDisposable
             catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException)
             {
                 // Оставляем сломанный файл пользователю и продолжаем со значениями по умолчанию.
-                _log.Warning($"Config '{path}' is unreadable and was set aside: {ex.Message}");
+                _log.Warning(Loc.T($"Настройки '{path}' не читаются, файл отложен в сторону: {ex.Message}", $"Config '{path}' is unreadable and was set aside: {ex.Message}"));
                 File.Move(path, $"{path}.broken-{DateTime.Now:yyyyMMddHHmmss}", true);
             }
         }
@@ -72,7 +79,7 @@ public sealed class ConfigStore : IDisposable
                     document.Values[setting.Key] = fixedList;
                     document.Dirty = true;
                     repaired = true;
-                    _log.Warning($"Repaired the list '{setting.Key}' of {manifest.Id}");
+                    _log.Warning(Loc.T($"Починен список '{setting.Key}' плагина {manifest.Id}", $"Repaired the list '{setting.Key}' of {manifest.Id}"));
                 }
 
                 if (setting.Default is null || document.Values.ContainsKey(setting.Key)) continue;
@@ -147,26 +154,32 @@ public sealed class ConfigStore : IDisposable
     /// <summary>Записывает на диск всё, что изменилось.</summary>
     public void Flush()
     {
-        foreach (var document in _documents.Values)
+        // Таймер и завершение хаба могут прийти сюда одновременно, а временный файл у документа один.
+        lock (_flushGate)
         {
-            string text;
-            lock (document)
+            foreach (var document in _documents.Values)
             {
-                if (!document.Dirty) continue;
-                document.Dirty = false;
-                text = document.Values.ToJsonString(Jsonc.WriteOptions);
-            }
+                string text;
+                lock (document)
+                {
+                    if (!document.Dirty) continue;
+                    document.Dirty = false;
+                    text = document.Values.ToJsonString(Jsonc.WriteOptions);
+                }
 
-            try
-            {
-                // Через временный файл, чтобы сбой на середине записи не съел настройки.
-                var temporary = document.Path + ".tmp";
-                File.WriteAllText(temporary, text);
-                File.Move(temporary, document.Path, true);
-            }
-            catch (IOException ex)
-            {
-                _log.Error($"Could not save '{document.Path}': {ex.Message}");
+                try
+                {
+                    // Через временный файл, чтобы сбой на середине записи не съел настройки.
+                    var temporary = document.Path + ".tmp";
+                    File.WriteAllText(temporary, text);
+                    File.Move(temporary, document.Path, true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Файл мог держать антивирус. Значение не теряем: уйдёт при следующей записи или при завершении.
+                    lock (document) document.Dirty = true;
+                    _log.Error(Loc.T($"Не удалось сохранить '{document.Path}': {ex.Message}", $"Could not save '{document.Path}': {ex.Message}"));
+                }
             }
         }
     }

@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>$(QhWindows)</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <Description>SDK for external QuantumHub plugins on .NET.</Description>
   </PropertyGroup>
 
   <ItemGroup>

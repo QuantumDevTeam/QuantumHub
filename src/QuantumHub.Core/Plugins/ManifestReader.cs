@@ -1,3 +1,4 @@
+using QuantumHub.Contracts.Ui;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Text;
@@ -26,21 +27,41 @@ public static partial class ManifestReader
     /// <exception cref="InvalidDataException">Манифест пуст или нарушает правила.</exception>
     public static PluginManifest Parse(string jsonc)
     {
-        var json = Jsonc.Parse(jsonc)?.ToJsonString() ?? throw new InvalidDataException("The manifest is empty.");
+        var json = Jsonc.Parse(jsonc)?.ToJsonString() ?? throw new InvalidDataException(Loc.T("Манифест пуст.", "The manifest is empty."));
         var manifest = Parser.Parse<PluginManifest>(json);
 
         if (!ValidId().IsMatch(manifest.Id))
-            throw new InvalidDataException($"'{manifest.Id}' is not a valid plugin id.");
+            throw new InvalidDataException(Loc.T($"'{manifest.Id}' не подходит как id плагина.", $"'{manifest.Id}' is not a valid plugin id."));
         if (!SemVersion.TryParse(manifest.Version, out _))
-            throw new InvalidDataException($"'{manifest.Version}' is not a valid version.");
+            throw new InvalidDataException(Loc.T($"'{manifest.Version}' не похоже на версию.", $"'{manifest.Version}' is not a valid version."));
 
         foreach (var dependency in manifest.Dependencies)
         {
             if (dependency.Id.Length > 0 == dependency.Capability.Length > 0)
-                throw new InvalidDataException("A dependency needs exactly one of 'id' and 'capability'.");
+                throw new InvalidDataException(Loc.T("У зависимости должно быть ровно одно из полей 'id' и 'capability'.", "A dependency needs exactly one of 'id' and 'capability'."));
+        }
+
+        if (manifest.Hub.Length > 0 && !VersionRange.TryParse(manifest.Hub, out _))
+            throw new InvalidDataException(Loc.T($"'{manifest.Hub}' не похоже на диапазон версий хаба.", $"'{manifest.Hub}' is not a valid hub version range."));
+
+        var actions = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var link in manifest.Links)
+        {
+            if (!ValidId().IsMatch(link.Action)) throw new InvalidDataException(Loc.T($"'{link.Action}' не подходит как имя действия.", $"'{link.Action}' is not a valid link action."));
+            if (!actions.Add(link.Action)) throw new InvalidDataException(Loc.T($"Действие '{link.Action}' объявлено дважды.", $"The link action '{link.Action}' is declared twice."));
         }
 
         return manifest;
+    }
+
+    /// <summary>Почему плагин не подходит этому хабу.</summary>
+    /// <param name="manifest">Манифест.</param>
+    /// <param name="hubVersion">Версия хаба.</param>
+    /// <returns>Текст причины или <see langword="null"/>, если подходит.</returns>
+    public static string? Incompatibility(PluginManifest manifest, string hubVersion)
+    {
+        if (manifest.Hub.Length == 0 || !VersionRange.TryParse(manifest.Hub, out var range) || !SemVersion.TryParse(hubVersion, out var version)) return null;
+        return range.Includes(version) ? null : Loc.T($"Плагину нужен хаб {manifest.Hub}, а здесь {hubVersion}.", $"The plugin needs hub {manifest.Hub}, this is {hubVersion}.");
     }
 
     /// <summary>Читает встроенный ресурс, не загружая сборку: осмотр плагина никогда не выполняет его код.</summary>

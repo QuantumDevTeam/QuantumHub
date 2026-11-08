@@ -34,6 +34,20 @@ message PluginManifest {
   repeated SettingDescriptor settings = 12;
   // Переводы: код языка и текст на нём. Основной текст манифеста показывается, если перевода нет.
   map<string, ManifestLocale> locales = 13;
+  // Какие версии хаба подходят плагину: то же, что Dependency.version. Пусто значит любая.
+  string hub = 14;
+  // Действия, которые можно запустить ссылкой quantumhub://run/<id>/<action>. Остальные методы плагина ссылкам недоступны.
+  repeated LinkAction links = 15;
+}
+
+// Действие плагина, доступное по ссылке. Перед первым запуском GUI показывает его пользователю.
+message LinkAction {
+  // Имя в ссылке: латиница, цифры, точки, дефисы.
+  string action = 1;
+  // Название для показа.
+  string title = 2;
+  // Пояснение для показа.
+  string description = 3;
 }
 
 // Перевод манифеста на один язык.
@@ -46,6 +60,8 @@ message ManifestLocale {
   map<string, string> groups = 3;
   // Тексты настроек по их ключам.
   map<string, SettingLocale> settings = 4;
+  // Тексты действий по их именам.
+  map<string, SettingLocale> links = 5;
 }
 
 // Перевод одной настройки.
