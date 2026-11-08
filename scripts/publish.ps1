@@ -1,6 +1,7 @@
 # Assembles a portable install. The result can be copied anywhere:
 #   QuantumHub.Service.exe    the hub
 #   gui\QuantumHub.Gui.exe    the admin console
+#   cli\quantumhub.exe        the command line
 #   plugins\<id>\             bundled plugins
 #   dotnet\                   a private .NET: the machine needs nothing installed
 #   samples\                  the external test client
@@ -49,6 +50,7 @@ New-Item -ItemType Directory -Force $Output | Out-Null
 $Output = (Resolve-Path $Output).Path
 
 PublishApp 'src\QuantumHub.Service\QuantumHub.Service.csproj' $Output
+PublishApp 'src\QuantumHub.Cli\QuantumHub.Cli.csproj' (Join-Path $Output 'cli')
 Copy-Runtime (Join-Path $Output 'dotnet')
 Publish 'samples\QuantumHub.Sample.ExternalConsole\QuantumHub.Sample.ExternalConsole.csproj' (Join-Path $Output 'samples')
 

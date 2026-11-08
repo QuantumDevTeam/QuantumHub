@@ -23,6 +23,13 @@ internal static class ShellIntegration
     /// <summary>Ключ расширения файлов плагинов.</summary>
     private const string FileExtension = @"Software\Classes\.qhp";
 
+    /// <summary>Ключ схемы ссылок quantumhub://.</summary>
+    private const string LinkClass = @"Software\Classes\quantumhub";
+    /// <summary>Ключ переменных среды пользователя.</summary>
+    private const string EnvironmentKey = "Environment";
+    /// <summary>Папка CLI внутри программы.</summary>
+    private const string CliFolder = "cli";
+
     /// <summary>Имя деинсталлятора в папке программы.</summary>
     public const string UninstallerName = "Uninstall.exe";
 
@@ -73,7 +80,7 @@ internal static class ShellIntegration
         {
             if (autostart)
             {
-                key.SetValue(RunHubValue, $"\"{hub}\"");
+                key.SetValue(RunHubValue, $"\"{hub}\" --watch");
                 key.SetValue(RunGuiValue, $"\"{gui}\" --minimized");
             }
             else
@@ -93,13 +100,42 @@ internal static class ShellIntegration
             command.SetValue(null, $"\"{gui}\" --install \"%1\"");
         }
 
+        using (var key = Registry.CurrentUser.CreateSubKey(LinkClass))
+        {
+            key.SetValue(null, "URL:QuantumHub");
+            key.SetValue("URL Protocol", string.Empty);
+            using var icon = key.CreateSubKey("DefaultIcon");
+            icon.SetValue(null, $"\"{gui}\",0");
+            using var command = key.CreateSubKey(@"shell\open\command");
+            command.SetValue(null, $"\"{gui}\" --link \"%1\"");
+        }
+
+        SetUserPath(current => PathList.Add(current, Path.Combine(directory, CliFolder)));
         CreateShortcut(ShortcutPath, gui);
         SHChangeNotify(ShcneAssocChanged, 0, 0, 0);
     }
 
-    /// <summary>Убирает всё, что добавил <see cref="Register"/>.</summary>
-    public static void Unregister()
+    /// <summary>Меняет PATH пользователя и сообщает об этом запущенным программам.</summary>
+    private static void SetUserPath(Func<string, string> change)
     {
+        using var key = Registry.CurrentUser.CreateSubKey(EnvironmentKey);
+
+        // Без этого флага %USERPROFILE% и подобное превратились бы в готовые пути навсегда.
+        var current = key.GetValue("Path", string.Empty, RegistryValueOptions.DoNotExpandEnvironmentNames) as string ?? string.Empty;
+        var updated = change(current);
+        if (updated == current) return;
+
+        if (updated.Length == 0) key.DeleteValue("Path", false);
+        else key.SetValue("Path", updated, RegistryValueKind.ExpandString);
+        SendMessageTimeoutW(HwndBroadcast, WmSettingChange, 0, EnvironmentKey, SmtoAbortIfHung, SettingChangeTimeoutMs, out _);
+    }
+
+    /// <summary>Убирает всё, что добавил <see cref="Register"/>.</summary>
+    /// <param name="directory">Папка программы.</param>
+    public static void Unregister(string directory)
+    {
+        SetUserPath(current => PathList.Remove(current, Path.Combine(directory, CliFolder)));
+        Registry.CurrentUser.DeleteSubKeyTree(LinkClass, false);
         Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, false);
         Registry.CurrentUser.DeleteSubKeyTree(FileClass, false);
         Registry.CurrentUser.DeleteSubKeyTree(FileExtension, false);
@@ -138,6 +174,18 @@ internal static class ShellIntegration
 
     [DllImport("shell32.dll")]
     private static extern void SHChangeNotify(int eventId, uint flags, nint item1, nint item2);
+
+    /// <summary>Адрес сообщения для всех окон.</summary>
+    private const nint HwndBroadcast = 0xFFFF;
+    /// <summary>Сообщение о смене настроек.</summary>
+    private const uint WmSettingChange = 0x001A;
+    /// <summary>Не ждать зависшие окна.</summary>
+    private const uint SmtoAbortIfHung = 2;
+    /// <summary>Сколько ждать каждое окно.</summary>
+    private const uint SettingChangeTimeoutMs = 1000;
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern nint SendMessageTimeoutW(nint window, uint message, nint wParam, string lParam, uint flags, uint timeout, out nint result);
 
     /// <summary>COM-класс ярлыка.</summary>
     [ComImport]

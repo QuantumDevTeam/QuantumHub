@@ -125,7 +125,7 @@ internal static class Program
         async Task Work(Action<double> progress)
         {
             await RunningApp.StopAsync(installer.Directory);
-            ShellIntegration.Unregister();
+            ShellIntegration.Unregister(installer.Directory);
             installer.Uninstall();
             progress(1);
         }
