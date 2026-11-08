@@ -18,5 +18,7 @@
     href: PLUGINS.md
   - name: Протокол
     href: PROTOCOL.md
+  - name: Управление извне
+    href: AUTOMATION.md
 - name: API
   href: api/
