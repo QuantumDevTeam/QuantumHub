@@ -67,6 +67,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumHub.VrDashboard", "c
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumHub.Plugin.VrDashboard", "plugins\QuantumHub.Plugin.VrDashboard\QuantumHub.Plugin.VrDashboard.csproj", "{CACBDA1B-04D9-4049-BB5B-EB28181F6B01}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumHub.Cli", "src\QuantumHub.Cli\QuantumHub.Cli.csproj", "{53D32F38-5F50-46AD-B60F-E4D6042C0D55}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -401,6 +403,18 @@ Global
 		{CACBDA1B-04D9-4049-BB5B-EB28181F6B01}.Release|x64.Build.0 = Release|Any CPU
 		{CACBDA1B-04D9-4049-BB5B-EB28181F6B01}.Release|x86.ActiveCfg = Release|Any CPU
 		{CACBDA1B-04D9-4049-BB5B-EB28181F6B01}.Release|x86.Build.0 = Release|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Debug|x64.Build.0 = Debug|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Debug|x86.Build.0 = Debug|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Release|Any CPU.Build.0 = Release|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Release|x64.ActiveCfg = Release|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Release|x64.Build.0 = Release|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Release|x86.ActiveCfg = Release|Any CPU
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -433,5 +447,6 @@ Global
 		{72232B17-8057-45E3-A8E2-8C4A4F84560D} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{43B6B3C8-BA54-45F4-A54F-0F8DC645B650} = {FB2BDE23-E2A5-E65D-11DD-86BB88D265E4}
 		{CACBDA1B-04D9-4049-BB5B-EB28181F6B01} = {07D57EEB-2F50-60C4-C011-FE4FA775C9A8}
+		{53D32F38-5F50-46AD-B60F-E4D6042C0D55} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal
