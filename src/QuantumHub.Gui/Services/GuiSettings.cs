@@ -79,6 +79,13 @@ public sealed record GuiSettings
     /// <summary>Поднимать упавший хаб.</summary>
     public bool RestartHub { get; init; } = true;
 
+    /// <summary>Проверять новые версии на GitHub.</summary>
+    public bool CheckUpdates { get; init; } = true;
+    /// <summary>Разрешать ссылкам quantumhub:// запускать действия плагинов.</summary>
+    public bool LinkActions { get; init; } = true;
+    /// <summary>Действия, про которые уже не надо спрашивать: "плагин/действие".</summary>
+    public string[] TrustedLinks { get; init; } = [];
+
     /// <summary>Сколько строк журнала показывать.</summary>
     public int LogRows { get; init; } = 500;
     /// <summary>Записи какого уровня показывать: "debug", "info", "warning" или "error".</summary>
@@ -173,6 +180,7 @@ public sealed record GuiSettings
             LogRows = Math.Clamp(LogRows, MinLogRows, MaxLogRows),
             LogFont = Math.Clamp(LogFont, MinLogFont, MaxLogFont),
             LastPage = string.IsNullOrEmpty(LastPage) ? defaults.LastPage : LastPage,
+            TrustedLinks = TrustedLinks ?? [],
         };
     }
 

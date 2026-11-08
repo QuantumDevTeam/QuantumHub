@@ -17,6 +17,9 @@ public sealed class SettingsPage : HubPage
     /// <summary>Значения уровня журнала хаба в порядке списка.</summary>
     private static readonly string[] LogLevels = ["debug", "info", "warning", "error"];
 
+    /// <summary>Срок хранения журнала, если он не задан. Как в хабе.</summary>
+    private const int DefaultLogDays = 30;
+
     private readonly MainWindow _window;
     private readonly StackPanel _body;
     /// <summary>Колонка страницы: её ширина меняется сразу, без перестройки.</summary>
@@ -52,6 +55,7 @@ public sealed class SettingsPage : HubPage
         AddNavigation();
         AddWindow();
         AddConfirmations();
+        AddLinks();
         AddHub();
         AddLog();
         AddMaintenance();
@@ -68,8 +72,8 @@ public sealed class SettingsPage : HubPage
 
         _loadingHub = true;
         var index = Array.IndexOf(LogLevels, level.Json.Trim('"'));
-        _hubLogLevel.SelectedIndex = index >= 0 ? index : 0;
-        _hubLogDays.Value = double.TryParse(days.Json, System.Globalization.CultureInfo.InvariantCulture, out var value) ? value : 0;
+        _hubLogLevel.SelectedIndex = index >= 0 ? index : Array.IndexOf(LogLevels, "info");
+        _hubLogDays.Value = double.TryParse(days.Json, System.Globalization.CultureInfo.InvariantCulture, out var value) ? value : DefaultLogDays;
         ShowDays();
         _loadingHub = false;
         _hubLogLevel.IsEnabled = _hubLogDays.IsEnabled = true;
@@ -94,7 +98,7 @@ public sealed class SettingsPage : HubPage
         var gui = Environment.ProcessPath;
         Autostart(Loc.T("Запускать хаб при входе в Windows", "Start the hub when Windows starts"),
             Loc.T("Плагины будут работать сразу, без открытия этого окна.", "Plugins work right away, without opening this window."),
-            Services.Autostart.HubValue, service is null ? null : $"\"{service}\"");
+            Services.Autostart.HubValue, service is null ? null : $"\"{service}\" --watch");
         Autostart(Loc.T("Показывать значок в трее при входе", "Show the tray icon when Windows starts"),
             Loc.T("Интерфейс стартует свёрнутым.", "The interface starts minimized."),
             Services.Autostart.GuiValue, gui is null ? null : $"\"{gui}\" --minimized");
@@ -242,6 +246,19 @@ public sealed class SettingsPage : HubPage
         Add(Loc.T("Завершить работу хаба", "Stop the hub"), Loc.T("Все плагины остановятся. Запустить снова можно на странице «Обзор».", "All plugins stop. You can start it again on the Overview page."), stop);
     }
 
+    private void AddLinks()
+    {
+        Section(Loc.T("Ссылки", "Links"));
+
+        Toggle(Loc.T("Действия плагинов по ссылкам", "Plugin actions from links"),
+            Loc.T("Ссылка quantumhub://run/… запускает действие плагина. Перед первым запуском программа спрашивает.", "A quantumhub://run/… link runs a plugin action. The program asks before the first run."),
+            GuiSettings.Current.LinkActions, value => x => x with { LinkActions = value });
+
+        var forget = new Button { Content = Loc.T("Забыть", "Forget") };
+        forget.Click += (_, _) => GuiSettings.Update(x => x with { TrustedLinks = [] });
+        Add(Loc.T("Разрешённые действия", "Allowed actions"), Loc.T("Спрашивать снова про все действия.", "Ask again about every action."), forget);
+    }
+
     private void AddLog()
     {
         Section(Loc.T("Журнал на экране", "Log on screen"));
@@ -271,6 +288,10 @@ public sealed class SettingsPage : HubPage
         var copy = new Button { Content = Loc.T("Скопировать", "Copy") };
         copy.Click += async (_, _) => await CopyDiagnosticsAsync(copy);
         Add(Loc.T("Сведения для отчёта об ошибке", "Details for a bug report"), Loc.T("Версия, пути и состояние плагинов. Без настроек и токенов.", "Version, paths and plugin states. No settings or tokens."), copy);
+
+        var report = new Button { Content = Loc.T("Собрать", "Build") };
+        report.Click += async (_, _) => await ExportReportAsync();
+        Add(Loc.T("Архив для отчёта об ошибке", "Archive for a bug report"), Loc.T("Журналы и настройки без токенов и паролей. В журналах могут быть заголовки окон и названия треков.", "Logs and settings without tokens and passwords. Logs may contain window titles and track names."), report);
 
         var size = new Button { Content = Loc.T("Сбросить", "Reset") };
         size.Click += (_, _) => _window.ResetPlacement();
@@ -303,6 +324,37 @@ public sealed class SettingsPage : HubPage
             Padding = new Thickness(0, 4, 0, 0),
         });
         AddCard(Fluent.Card(about), "about version license");
+
+        Toggle(Loc.T("Проверять обновления", "Check for updates"), Loc.T("Раз в день спрашивать у GitHub, вышла ли новая версия.", "Ask GitHub once a day whether a new version is out."),
+            GuiSettings.Current.CheckUpdates, value => x => x with { CheckUpdates = value });
+
+        var check = new Button { Content = Loc.T("Проверить", "Check") };
+        var result = Fluent.Caption(string.Empty);
+        check.Click += async (_, _) =>
+        {
+            check.IsEnabled = false;
+            var found = await UpdateChecker.CheckAsync(version);
+            result.Text = found is null ? Loc.T("Новых версий нет.", "No new versions.") : Loc.T($"Вышла версия {found.Version}.", $"Version {found.Version} is out.");
+            check.IsEnabled = true;
+        };
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        panel.Children.Add(result);
+        panel.Children.Add(check);
+        result.VerticalAlignment = VerticalAlignment.Center;
+        Add(Loc.T("Обновления", "Updates"), null, panel);
+    }
+
+    /// <summary>Собирает архив и показывает его в проводнике.</summary>
+    private async Task ExportReportAsync()
+    {
+        var (reply, error) = await Hub.CallWithErrorAsync<DiagnosticsResponse>("hub.diagnostics.export", new DiagnosticsRequest());
+        if (reply is null)
+        {
+            ShowError(_body, error ?? string.Empty);
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{reply.Path}\"") { UseShellExecute = true })?.Dispose();
     }
 
     /// <summary>Предлагает перезапустить окно, если выбранная тема ещё не действует.</summary>

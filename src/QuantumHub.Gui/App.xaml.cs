@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using QuantumHub.Contracts.Links;
 using QuantumHub.Gui.Services;
 using QuantumHub.ProtoMemProtocol;
 
@@ -10,10 +11,16 @@ namespace QuantumHub.Gui;
 /// <remarks>
 /// Аргументы: <c>--minimized</c> стартует только в трее, <c>--instance</c> выбирает экземпляр хаба,
 /// <c>--page</c> открывает страницу, <c>--service-args</c> передаёт аргументы хабу, если GUI запускает его сам,
-/// <c>--install</c> устанавливает плагин из файла: так открываются файлы .qhp из проводника.
+/// <c>--install</c> устанавливает плагин из файла: так открываются файлы .qhp из проводника,
+/// <c>--link</c> открывает ссылку quantumhub://.
 /// </remarks>
 public partial class App : Application
 {
+    /// <summary>Пауза перед первой проверкой обновлений: при запуске есть дела важнее.</summary>
+    private static readonly TimeSpan UpdateFirstDelay = TimeSpan.FromSeconds(10);
+    /// <summary>Как часто проверять обновления.</summary>
+    private static readonly TimeSpan UpdateInterval = TimeSpan.FromDays(1);
+
     /// <summary>Показывает, что GUI этого экземпляра уже запущен.</summary>
     private Mutex? _single;
     /// <summary>Второй запуск сигналит им первому, чтобы тот показал окно.</summary>
@@ -63,6 +70,8 @@ public partial class App : Application
         var argv = Environment.GetCommandLineArgs();
         var instance = Option(argv, "--instance") ?? HubEndpoint.DefaultInstance;
         if (Option(argv, "--install") is { } install) PendingInstalls.Add(instance, Path.GetFullPath(install));
+        var linkText = Option(argv, "--link");
+        if (linkText is not null) PendingInstalls.Add(instance, linkText);
 
         _single = new Mutex(true, $@"Local\QuantumHub.Gui.{instance}", out var isFirst);
         _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, $@"Local\QuantumHub.Gui.Show.{instance}");
@@ -82,27 +91,52 @@ public partial class App : Application
         _window.ExitRequested += () => dispatcher.TryEnqueue(Quit);
 
         ThreadPool.RegisterWaitForSingleObject(_showSignal,
-            (_, _) => dispatcher.TryEnqueue(() =>
-            {
-                ShowWindow();
-                RunPendingInstalls(instance);
-            }), null, Timeout.Infinite, false);
+            (_, _) => dispatcher.TryEnqueue(() => RunPending(instance, true)), null, Timeout.Infinite, false);
 
-        if (argv.Contains("--minimized")) _window.PrepareHidden();
+        // Разрешённое действие выполняется молча, например с кнопки Stream Deck: окну незачем выскакивать.
+        if (argv.Contains("--minimized") || IsRunLink(linkText)) _window.PrepareHidden();
         else ShowWindow();
 
         _ = _hub.StartAsync();
-        RunPendingInstalls(instance);
+        RunPending(instance, false);
+        _ = CheckUpdatesAsync(dispatcher);
     }
 
-    /// <summary>Устанавливает плагины, которые открыли в проводнике.</summary>
-    private async void RunPendingInstalls(string instance)
+    /// <summary>Ссылка на действие плагина.</summary>
+    private static bool IsRunLink(string? text) => HubLink.TryParse(text, out var link) && link.Kind == HubLinkKind.Run;
+
+    /// <summary>Выполняет то, что пришло из проводника и по ссылкам.</summary>
+    /// <param name="instance">Экземпляр.</param>
+    /// <param name="show">Показать окно, если очередь не состоит из одних действий: второй запуск просит именно этого.</param>
+    private async void RunPending(string instance, bool show)
     {
-        foreach (var path in PendingInstalls.Take(instance))
+        var items = PendingInstalls.Take(instance);
+        if (show && (items.Length == 0 || !items.All(IsRunLink))) ShowWindow();
+
+        foreach (var item in items)
         {
-            if (_window is not null) await _window.InstallFromShellAsync(path);
+            if (_window is null) return;
+            if (HubLink.HasScheme(item)) await _window.OpenLinkAsync(item);
+            else await _window.InstallFromShellAsync(item);
         }
     }
+
+    /// <summary>Проверяет обновления при запуске и потом раз в день.</summary>
+    private static async Task CheckUpdatesAsync(DispatcherQueue dispatcher)
+    {
+        var version = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+        await Task.Delay(UpdateFirstDelay);
+        using var timer = new PeriodicTimer(UpdateInterval);
+        do
+        {
+            if (GuiSettings.Current.CheckUpdates && await UpdateChecker.CheckAsync(version) is not null)
+                dispatcher.TryEnqueue(() => UpdateFound?.Invoke());
+        }
+        while (await timer.WaitForNextTickAsync());
+    }
+
+    /// <summary>Нашлась новая версия. Срабатывает на потоке интерфейса.</summary>
+    public static event Action? UpdateFound;
 
     /// <summary>Тема, с которой запущено окно.</summary>
     public static string ThemeAtStart { get; private set; } = GuiSettings.System;

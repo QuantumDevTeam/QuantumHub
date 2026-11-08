@@ -89,6 +89,11 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
 
         await SyncLanguageAsync();
         await Client.SubscribeAsync("hub.language.changed", e => Post(() => SetLanguage(e.Payload.AsText())));
+        // Хаб остановили не отсюда, например командой quantumhub stop: поднимать его снова нельзя.
+        await Client.SubscribeAsync("hub.stopping", _ => Post(() =>
+        {
+            if (!_restartRequested) _stopRequested = true;
+        }));
 
         Client.Disconnected += () => Post(OnDisconnected);
         Client.Reconnected += () => Post(OnConnected);
@@ -175,7 +180,8 @@ public sealed class HubConnection(HubEndpoint endpoint, DispatcherQueue dispatch
             return;
         }
 
-        var arguments = serviceArgs ?? string.Empty;
+        // Сторож поднимет упавший хаб и тогда, когда окно закрыто.
+        var arguments = GuiSettings.Current.RestartHub ? $"--watch {serviceArgs}".TrimEnd() : serviceArgs ?? string.Empty;
         if (endpoint.Instance != HubEndpoint.DefaultInstance && !arguments.Contains("--instance"))
             arguments = $"--instance \"{endpoint.Instance}\" {arguments}".TrimEnd();
 

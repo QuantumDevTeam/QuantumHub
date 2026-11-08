@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using QuantumHub.Contracts.Bus;
+using QuantumHub.Contracts.Links;
 using QuantumHub.Contracts.Proto;
 using QuantumHub.Gui.Pages;
 using QuantumHub.Gui.Services;
@@ -31,6 +32,8 @@ public sealed partial class MainWindow : Window
     private bool _reallyClosing;
     /// <summary>Подписки на хаб уже оформлены.</summary>
     private bool _subscribed;
+    /// <summary>Очередь диалогов от ссылок.</summary>
+    private readonly SemaphoreSlim _dialogs = new(1, 1);
     /// <summary>Завершается после первого подключения и построения страниц.</summary>
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -208,6 +211,123 @@ public sealed partial class MainWindow : Window
         await _ready.Task;
         Navigate("plugins");
         if (PageHost.Content is PluginsPage page) await page.ConfirmAndInstallAsync(path);
+    }
+
+    /// <summary>Открывает ссылку quantumhub://. Страницы открываются сразу, а действие плагина сначала показывается пользователю.</summary>
+    /// <param name="text">Текст ссылки.</param>
+    public async Task OpenLinkAsync(string text)
+    {
+        if (!HubLink.TryParse(text, out var link))
+        {
+            App.Log(Loc.T($"Непонятная ссылка: {text}", $"Unknown link: {text}"));
+            ShowAndFocus();
+            await InformAsync(Loc.T("Ссылка не открыта", "The link was not opened"), Loc.T("QuantumHub не знает такой ссылки.", "QuantumHub does not know this link."));
+            return;
+        }
+
+        if (link.Kind != HubLinkKind.Run) ShowAndFocus();
+        await _ready.Task;
+
+        switch (link.Kind)
+        {
+            case HubLinkKind.Page:
+                Navigate(link.Page!);
+                break;
+            case HubLinkKind.Plugin:
+                OpenPlugin(link.PluginId!);
+                break;
+            case HubLinkKind.Run:
+                await RunLinkAsync(link);
+                break;
+        }
+    }
+
+    /// <summary>Запускает действие плагина. Ссылку мог подсунуть любой сайт, поэтому первый раз решает пользователь.</summary>
+    private async Task RunLinkAsync(HubLink link)
+    {
+        var list = await _hub.TryCallAsync<PluginList>("hub.plugins.list", new PluginRef());
+        var plugin = list?.Plugins.FirstOrDefault(item => item.Manifest.Id == link.PluginId);
+        var action = plugin?.Manifest.Links.FirstOrDefault(item => item.Action == link.Action);
+        if (!GuiSettings.Current.LinkActions || action is null)
+        {
+            ShowAndFocus();
+            await InformAsync(Loc.T("Ссылка не открыта", "The link was not opened"), !GuiSettings.Current.LinkActions
+                ? Loc.T("Действия по ссылкам выключены в настройках.", "Link actions are turned off in the settings.")
+                : Loc.T($"У плагина {link.PluginId} нет действия {link.Action}.", $"The plugin {link.PluginId} has no action {link.Action}."));
+            return;
+        }
+
+        var key = $"{link.PluginId}/{link.Action}";
+        if (!GuiSettings.Current.TrustedLinks.Contains(key))
+        {
+            ShowAndFocus();
+            if (!await AskLinkAsync(plugin!, action, link, key)) return;
+        }
+
+        var request = new LinkRunRequest { PluginId = link.PluginId!, Action = link.Action! };
+        foreach (var (name, value) in link.Params) request.Params[name] = value;
+        if (await _hub.TryRunAsync("hub.links.run", request) is { } error)
+        {
+            ShowAndFocus();
+            await InformAsync(Loc.T("Действие не выполнено", "The action failed"), error);
+        }
+    }
+
+    /// <summary>Спрашивает, выполнять ли действие.</summary>
+    private async Task<bool> AskLinkAsync(PluginInfo plugin, LinkAction action, HubLink link, string key)
+    {
+        var body = new StackPanel { Spacing = 8 };
+        body.Children.Add(Fluent.Text(Loc.T($"Ссылка просит плагин {plugin.Manifest.Name} выполнить действие:", $"A link asks the plugin {plugin.Manifest.Name} to run an action:")));
+        body.Children.Add(Fluent.Text(action.Title.Length > 0 ? action.Title : action.Action, "BodyStrongTextBlockStyle"));
+        if (action.Description.Length > 0) body.Children.Add(Fluent.Caption(action.Description));
+        foreach (var (name, value) in link.Params) body.Children.Add(Fluent.Caption($"{name} = {value}"));
+        body.Children.Add(Fluent.Caption(Loc.T("Разрешай, только если сам нажал на эту ссылку.", "Allow this only if you clicked the link yourself.")));
+        var remember = new CheckBox { Content = Loc.T("Больше не спрашивать про это действие", "Do not ask about this action again") };
+        body.Children.Add(remember);
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = Loc.T("Выполнить действие?", "Run the action?"),
+            Content = body,
+            PrimaryButtonText = Loc.T("Выполнить", "Run"),
+            CloseButtonText = Loc.T("Отмена", "Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+        };
+
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary) return false;
+        if (remember.IsChecked == true)
+            GuiSettings.Update(settings => settings with { TrustedLinks = [.. settings.TrustedLinks.Append(key).Distinct()] });
+        return true;
+    }
+
+    /// <summary>Показывает сообщение.</summary>
+    private async Task InformAsync(string title, string message) => await ShowDialogAsync(new ContentDialog
+    {
+        XamlRoot = Content.XamlRoot,
+        Title = title,
+        Content = message,
+        CloseButtonText = "OK",
+    });
+
+    /// <summary>Показывает диалог. Двух диалогов сразу WinUI не умеет, поэтому они ждут очереди.</summary>
+    private async Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog)
+    {
+        await _dialogs.WaitAsync();
+        try
+        {
+            return await dialog.ShowAsync();
+        }
+        catch (COMException ex)
+        {
+            // Открыт другой диалог, например со страницы плагинов.
+            App.Log(ex.Message);
+            return ContentDialogResult.None;
+        }
+        finally
+        {
+            _dialogs.Release();
+        }
     }
 
     /// <summary>Подписи меню на текущем языке.</summary>

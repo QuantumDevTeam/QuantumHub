@@ -15,10 +15,15 @@ public sealed class OverviewPage : HubPage
     /// <param name="hub">Связь с хабом.</param>
     public OverviewPage(HubConnection hub) : base(hub)
     {
+        App.UpdateFound += OnUpdateFound;
+        Unloaded += (_, _) => App.UpdateFound -= OnUpdateFound;
         var (root, body) = Fluent.Page(Loc.T("Обзор", "Overview"), Loc.T("Хаб работает в фоне. Это окно можно закрыть, плагины останутся на месте.", "The hub runs in the background. You can close this window, plugins keep working."));
         _body = body;
         Content = root;
     }
+
+    /// <summary>Показывает новую версию, если страница уже открыта.</summary>
+    private void OnUpdateFound() => _ = LoadSafelyAsync();
 
     /// <inheritdoc/>
     protected override async Task LoadAsync()
@@ -63,6 +68,7 @@ public sealed class OverviewPage : HubPage
             tiles.Children.Add(card);
         }
 
+        if (UpdateChecker.Available is { } update) _body.Children.Add(UpdateBar(update));
         _body.Children.Add(tiles);
         _body.Children.Add(Row(Loc.T("Версия хаба", "Hub version"), status.Version));
         _body.Children.Add(Row(Loc.T("Транспорты", "Transports"), string.Join(", ", status.Transports)));
@@ -71,6 +77,20 @@ public sealed class OverviewPage : HubPage
             _body.Children.Add(Row(Loc.T("Программа", "Program"), status.RootDir));
             _body.Children.Add(Row(Loc.T("Данные и настройки", "Data and settings"), status.DataDir));
         }
+    }
+
+    /// <summary>Сообщение о новой версии.</summary>
+    private static InfoBar UpdateBar(UpdateChecker.Release update)
+    {
+        var open = new HyperlinkButton { Content = Loc.T("Открыть страницу релиза", "Open the release page"), NavigateUri = new Uri(update.Url) };
+        return new InfoBar
+        {
+            IsOpen = true,
+            Severity = InfoBarSeverity.Informational,
+            Title = Loc.T($"Вышла версия {update.Version}", $"Version {update.Version} is out"),
+            Message = Loc.T("Скачай установщик: настройки и плагины сохранятся.", "Download the installer: your settings and plugins are kept."),
+            ActionButton = open,
+        };
     }
 
     /// <summary>Строка сведений.</summary>
