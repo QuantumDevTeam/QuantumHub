@@ -116,7 +116,7 @@ workflow and versioning rules.
 
 ## Licensing and Contributions
 
-By submitting contributions, you agree to the terms described in [CLA.md](CLA.md).
+By submitting contributions, you agree to the project's contribution terms.
 
 Contributions are provided "as is", without warranty of any kind, express or implied.
 
