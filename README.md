@@ -7,7 +7,7 @@
 делают плагины, а окно на WinUI 3 служит админкой к этому ядру.
 
 QuantumHub is licensed under PolyForm Noncommercial 1.0.0. It may include contributions from
-external community contributors under the terms described in [CLA.md](CLA.md).
+external community contributors.
 
 ```
  Rider / VS Code / Discord / что угодно          QuantumHub.Gui (WinUI 3, трей)
@@ -109,7 +109,6 @@ powershell -ExecutionPolicy Bypass -File scripts/docs.ps1 -Serve
 Участие в проекте:
 
 - [Contributing Guide](CONTRIBUTING.md)
-- [Contributor License Agreement (CLA)](CLA.md)
 - [Git & Workflow Policy](docs/GitPolicy.md)
 - [Versioning Strategy](docs/Versioning.md)
 - [Changelog](CHANGELOG.md)

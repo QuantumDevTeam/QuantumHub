@@ -20,7 +20,6 @@ Describe the purpose of this pull request and the changes introduced.
 ## Checklist
 
 * [ ] I have read `CONTRIBUTING.md`
-* [ ] I agree to the terms of `CLA.md`
 * [ ] I confirm that I have the legal right to submit this contribution
 * [ ] My contribution does not knowingly include incompatible third-party code or assets
 * [ ] I tested the changes where applicable
