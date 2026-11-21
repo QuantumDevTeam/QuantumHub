@@ -1,0 +1,9 @@
+name: Restrict pull requests to the default branch
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+jobs:
+  restrict:
+    uses: QuantumDevTeam/.github/.github/workflows/restrict-master-prs.yml@master
